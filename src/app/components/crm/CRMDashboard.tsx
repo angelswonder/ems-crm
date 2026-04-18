@@ -1,8 +1,11 @@
 import { useState, useEffect } from 'react';
-import { Users, Building2, Target, AlertCircle, TrendingUp, CheckSquare, Megaphone, DollarSign, Activity } from 'lucide-react';
+import { Users, Building2, Target, AlertCircle, TrendingUp, CheckSquare, Megaphone, DollarSign, Activity, ChevronDown } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 import { listRecords } from './crmApi';
+import { useApp } from '../../contexts/AppContext';
+import { loadTemplates, getUserTemplatePreferences, saveUserTemplatePreferences, getDefaultTemplateForRole } from '../utils/crmStorageUtils';
 import type { Lead, Account, Opportunity, Case, Task, Campaign } from './crmTypes';
+import type { DashboardTemplate } from './DashboardTemplateManager';
 
 const STAGE_PROBS: Record<string, number> = {
   'Prospecting': 10, 'Qualification': 20, 'Needs Analysis': 25, 'Value Proposition': 50,
@@ -37,9 +40,12 @@ function MetricCard({ icon: Icon, label, value, sub, color }: { icon: React.Elem
 }
 
 export function CRMDashboard() {
+  const { currentUser } = useApp();
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
   const [dashboardMode, setDashboardMode] = useState<'overview' | 'pipeline' | 'activity'>('overview');
+  const [templates, setTemplates] = useState<DashboardTemplate[]>([]);
+  const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
   const [widgetVisibility, setWidgetVisibility] = useState({
     leads: true,
     accounts: true,
@@ -54,9 +60,42 @@ export function CRMDashboard() {
     setWidgetVisibility((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
+  const handleTemplateChange = (templateId: string) => {
+    const template = templates.find((t) => t.id === templateId);
+    if (!template) return;
+
+    setSelectedTemplate(templateId);
+    setDashboardMode(template.mode);
+    setWidgetVisibility(template.widgets);
+
+    // Save user preference
+    if (currentUser) {
+      saveUserTemplatePreferences(currentUser.id, templateId, { mode: template.mode });
+    }
+  };
+
   useEffect(() => {
     const loadAll = async () => {
       try {
+        // Load templates
+        const loadedTemplates = loadTemplates();
+        setTemplates(loadedTemplates);
+
+        // Try to load user's saved template preference
+        if (currentUser) {
+          const userPref = getUserTemplatePreferences(currentUser.id);
+          if (userPref && loadedTemplates.find((t) => t.id === userPref.templateId)) {
+            setSelectedTemplate(userPref.templateId);
+          } else {
+            // Try to set default template for user's role
+            const defaultTemplate = getDefaultTemplateForRole(loadedTemplates, currentUser.role);
+            if (defaultTemplate) {
+              setSelectedTemplate(defaultTemplate.id);
+            }
+          }
+        }
+
+        // Load CRM data
         const [leads, accounts, opportunities, cases, tasks, campaigns] = await Promise.all([
           listRecords<Lead>('lead'),
           listRecords<Account>('account'),
@@ -116,12 +155,33 @@ export function CRMDashboard() {
     <div className="space-y-6">
       <div className="grid gap-4 xl:grid-cols-[2fr_1fr]">
         <div className="bg-card rounded-2xl border border-border/30 p-5 shadow-sm">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div>
-              <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground mb-2">Dashboard Modes</p>
-              <h2 className="text-lg font-semibold text-foreground">CRM {dashboardMode.charAt(0).toUpperCase() + dashboardMode.slice(1)} Dashboard</h2>
-              <p className="text-sm text-muted-foreground mt-1">Customize which widgets appear in your {dashboardMode} view to optimize your workflow.</p>
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+              <div>
+                <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground mb-2">Dashboard Modes</p>
+                <h2 className="text-lg font-semibold text-foreground">CRM {dashboardMode.charAt(0).toUpperCase() + dashboardMode.slice(1)} Dashboard</h2>
+                <p className="text-sm text-muted-foreground mt-1">Customize which widgets appear in your {dashboardMode} view to optimize your workflow.</p>
+              </div>
+              
+              {templates.length > 0 && (
+                <div className="relative">
+                  <select
+                    value={selectedTemplate || ''}
+                    onChange={(e) => handleTemplateChange(e.target.value)}
+                    className="appearance-none px-4 py-2 rounded-lg border border-border/50 bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 cursor-pointer"
+                  >
+                    <option value="">Select a template...</option>
+                    {templates.map((template) => (
+                      <option key={template.id} value={template.id}>
+                        {template.name} {template.isDefault ? '(Default)' : ''} {template.isPinned ? '📌' : ''}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="w-4 h-4 absolute right-3 top-2.5 text-muted-foreground pointer-events-none" />
+                </div>
+              )}
             </div>
+
             <div className="flex flex-wrap gap-2">
               {(['overview', 'pipeline', 'activity'] as const).map((mode) => (
                 <button

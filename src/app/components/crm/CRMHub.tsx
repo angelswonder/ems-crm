@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useApp } from '../../contexts/AppContext';
-import { LayoutDashboard, Users, Building2, UserCircle, Target, AlertCircle, CheckSquare, CalendarDays, Megaphone, Plus, ShieldAlert } from 'lucide-react';
+import { LayoutDashboard, Users, Building2, UserCircle, Target, AlertCircle, CheckSquare, CalendarDays, Megaphone, Plus, ShieldAlert, Folder, Layout } from 'lucide-react';
 import { CRMDashboard } from './CRMDashboard';
 import { LeadsModule } from './LeadsModule';
 import { AccountsModule } from './AccountsModule';
@@ -11,6 +11,8 @@ import { TasksModule } from './TasksModule';
 import { CalendarModule } from './CalendarModule';
 import { CampaignsModule } from './CampaignsModule';
 import { CustomObjectBuilder } from './CustomObjectBuilder';
+import { FolderManagement } from './FolderManagement';
+import { DashboardTemplateManager } from './DashboardTemplateManager';
 
 const TABS = [
   { id: 'dashboard',     label: 'Dashboard',      icon: LayoutDashboard },
@@ -45,6 +47,8 @@ export function CRMHub() {
   const [newObjectName, setNewObjectName] = useState('');
   const [showObjectBuilder, setShowObjectBuilder] = useState(false);
   const [selectedObjectId, setSelectedObjectId] = useState<string | null>(null);
+  const [showFolderManagement, setShowFolderManagement] = useState(false);
+  const [showTemplateManager, setShowTemplateManager] = useState(false);
 
   const addCustomTab = () => {
     const name = newObjectName.trim();
@@ -109,7 +113,25 @@ export function CRMHub() {
             <h1 className="text-2xl font-semibold text-foreground">CRM</h1>
             <p className="text-muted-foreground text-sm mt-0.5">Customer Relationship Management · All records stored in Supabase</p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setShowFolderManagement(true)}
+              className="p-2 rounded-lg hover:bg-muted transition text-muted-foreground hover:text-foreground flex items-center gap-2 text-sm"
+              title="Manage Folders"
+            >
+              <Folder className="w-4 h-4" />
+              <span className="hidden sm:inline">Folders</span>
+            </button>
+            {currentUser?.role === 'admin' && (
+              <button
+                onClick={() => setShowTemplateManager(true)}
+                className="p-2 rounded-lg hover:bg-muted transition text-muted-foreground hover:text-foreground flex items-center gap-2 text-sm"
+                title="Manage Dashboard Templates"
+              >
+                <Layout className="w-4 h-4" />
+                <span className="hidden sm:inline">Templates</span>
+              </button>
+            )}
             <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
             <span className="text-xs text-muted-foreground font-medium">Live Database</span>
           </div>
@@ -178,6 +200,20 @@ export function CRMHub() {
           objectId={selectedObjectId}
           objectName={crmTabs.find((tab) => tab.id === selectedObjectId)?.label || 'Custom Object'}
           onClose={() => setShowObjectBuilder(false)}
+        />
+      )}
+
+      {/* Folder Management Modal */}
+      {showFolderManagement && (
+        <FolderManagement
+          onClose={() => setShowFolderManagement(false)}
+        />
+      )}
+
+      {/* Dashboard Template Manager Modal */}
+      {showTemplateManager && (
+        <DashboardTemplateManager
+          onClose={() => setShowTemplateManager(false)}
         />
       )}
     </div>
