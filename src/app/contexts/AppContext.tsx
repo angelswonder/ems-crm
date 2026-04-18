@@ -346,6 +346,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, [theme]);
 
+  useEffect(() => {
+    const layoutClasses = ["layout-compact", "layout-spacious"];
+    const root = document.documentElement;
+    root.classList.remove(...layoutClasses);
+
+    if (layoutMode === "compact") {
+      root.classList.add("layout-compact");
+    } else if (layoutMode === "spacious") {
+      root.classList.add("layout-spacious");
+    }
+  }, [layoutMode]);
+
   return (
     <AppContext.Provider value={{
       currentUser, users, messages, notifications, locations,

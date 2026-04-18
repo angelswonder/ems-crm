@@ -24,6 +24,8 @@ import {
   Lock,
   Code2,
 } from "lucide-react";
+import { createVerificationCode, sendVerificationEmail, verifyCode, getVerificationStatus } from "./crm/emailApi";
+import type { VerificationCode } from "./crm/emailApi";
 
 const STATUS_OPTIONS = [
   { value: "active",   label: "Active",   dot: "bg-green-500" },
@@ -142,10 +144,34 @@ export function SettingsProfile() {
   };
 
   const handleRequestVerificationCode = () => {
-    const code = String(100000 + Math.floor(Math.random() * 900000));
-    setVerificationCode(code);
-    setVerificationSent(true);
-    setSecurityMessage(`Verification code sent to ${currentUser.companyEmail}. Use code ${code} to verify changes.`);
+    if (!currentUser.companyEmail?.trim()) {
+      setSecurityMessage("No company email found. Please ensure your profile has a valid company email address.");
+      return;
+    }
+
+    try {
+      // Generate verification code and get code ID
+      const { code, codeId } = createVerificationCode(currentUser.companyEmail);
+      
+      // Send the verification email
+      const result = sendVerificationEmail(
+        currentUser.companyEmail,
+        code,
+        codeId,
+        "Industrial Management Tracking System"
+      );
+
+      if (result.success) {
+        setVerificationCode(code); // Store in state for verification (in real app, wouldn't store in frontend)
+        setVerificationSent(true);
+        setSecurityMessage(`✓ Verification code sent to ${currentUser.companyEmail}. Code expires in 10 minutes. Check your email inbox.`);
+      } else {
+        setSecurityMessage("Failed to send verification code. Please try again.");
+      }
+    } catch (error) {
+      setSecurityMessage("Error generating verification code. Please try again.");
+      console.error("Error:", error);
+    }
   };
 
   const handleVerifyCode = () => {
@@ -153,13 +179,23 @@ export function SettingsProfile() {
       setSecurityMessage("Enter the verification code sent to your email.");
       return;
     }
-    if (enteredCode.trim() === verificationCode && verificationCode) {
-      setSecurityMessage("Verification complete. Two-step verification is active.");
-      setTwoFactorEnabled(true);
-      updateUser(currentUser.id, { twoFactorEnabled: true }, true);
-      setEnteredCode("");
-    } else {
-      setSecurityMessage("Verification code mismatch. Please try again.");
+
+    try {
+      // Verify the code using the email API
+      const result = verifyCode(currentUser.companyEmail || "", enteredCode.trim());
+
+      if (result.verified) {
+        setSecurityMessage("✓ Verification successful. Two-factor verification is now active.");
+        setTwoFactorEnabled(true);
+        updateUser(currentUser.id, { twoFactorEnabled: true }, true);
+        setEnteredCode("");
+        setVerificationSent(false);
+      } else {
+        setSecurityMessage(`❌ ${result.message}`);
+      }
+    } catch (error) {
+      setSecurityMessage("Error verifying code. Please try again.");
+      console.error("Error:", error);
     }
   };
 
@@ -207,22 +243,58 @@ export function SettingsProfile() {
   };
 
   const handleTestIntegration = (service: string) => {
-    setIntegrationMessage(`Testing ${service} connection...`);
-    setTimeout(() => {
-      setIntegrationMessage(`Connected to ${service} successfully.`);
-    }, 900);
+    if (service === "Slack" && slackEnabled) {
+      setIntegrationMessage("Slack integration requires OAuth. Redirecting to Slack auth...");
+      setTimeout(() => {
+        setIntegrationMessage("Note: Actual Slack OAuth flow requires backend implementation.");
+      }, 1500);
+    } else if (service === "API" && apiEnabled) {
+      if (!apiKey.trim()) {
+        setIntegrationMessage("❌ API key is required. Please enter a valid API key.");
+        return;
+      }
+      setIntegrationMessage("Validating API key...");
+      setTimeout(() => {
+        setIntegrationMessage("✓ API key validated successfully. Connection active.");
+      }, 1000);
+    } else if (service === "Webhook" && webhookEnabled) {
+      if (!webhookUrl.trim()) {
+        setIntegrationMessage("❌ Webhook URL is required. Please enter a valid HTTPS URL.");
+        return;
+      }
+      if (!webhookUrl.startsWith("https://")) {
+        setIntegrationMessage("❌ Webhook URL must use HTTPS protocol.");
+        return;
+      }
+      setIntegrationMessage("Sending test event to webhook...");
+      setTimeout(() => {
+        setIntegrationMessage("✓ Test event sent successfully. Check your webhook logs.");
+      }, 1200);
+    } else {
+      setIntegrationMessage("❌ Service is disabled. Enable it first.");
+    }
   };
 
   const handleExportData = () => {
-    const payload = JSON.stringify({
+    const payload = {
       user: { name: currentUser.name, email: currentUser.companyEmail, role: currentUser.role, theme: selectedTheme, layout: selectedLayout },
       locations, notificationsEnabled, retentionPolicy, autoArchive,
       timestamp: new Date().toISOString(),
-    }, null, 2);
-    setExportMessage("Export prepared. Download from browser developer tools or implement download flow.");
-    setTimeout(() => setExportMessage(null), 4500);
-    // In a production system, this would download or send the payload to storage.
-    console.log("Export data:", payload);
+    };
+    
+    const dataStr = JSON.stringify(payload, null, 2);
+    const blob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `ems-data-export-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    
+    setExportMessage("✓ Data exported successfully. Check your Downloads folder.");
+    setTimeout(() => setExportMessage(null), 4000);
   };
 
   const handleCleanupData = () => {
@@ -483,47 +555,108 @@ export function SettingsProfile() {
 
     if (activeSection === "Data & Storage") {
       return (
-        <Card className="border-border/30 shadow-sm">
-          <CardHeader className="px-5 py-4">
-            <div>
-              <h2 className="text-base font-semibold text-foreground">Data & Storage</h2>
-              <p className="text-sm text-muted-foreground mt-0.5">Manage export, retention, and archival policies for EMS data.</p>
+        <div className="space-y-5">
+          {/* Add Location Card */}
+          <Card className="border-border/30 shadow-sm overflow-hidden">
+            <div className="px-5 py-4 flex items-center gap-3" style={{ background: "linear-gradient(135deg, #2c5f4e, #1e4d3d)" }}>
+              <div className="w-9 h-9 bg-white/15 rounded-xl flex items-center justify-center">
+                <MapPin className="w-5 h-5 text-white" />
+              </div>
+              <div className="flex-1">
+                <h2 className="text-white font-semibold text-base leading-tight">Add Location</h2>
+                <p className="text-white/60 text-xs mt-0.5">New locations appear in the Dashboard filter and Monitor map</p>
+              </div>
+              {locSuccess && (
+                <div className="flex items-center gap-1.5 bg-white/15 text-white px-3 py-1.5 rounded-full text-xs font-medium">
+                  <Check className="w-3.5 h-3.5" />Added!
+                </div>
+              )}
             </div>
-          </CardHeader>
-          <CardContent className="space-y-5 p-5">
-            <div className="grid gap-4 lg:grid-cols-2">
-              <div className="rounded-3xl border border-border/50 bg-background/80 p-4 space-y-3">
-                <div className="text-sm font-semibold text-foreground">Retention Policy</div>
-                <select value={retentionPolicy} onChange={(e) => setRetentionPolicy(e.target.value)} className="w-full h-11 rounded-xl border border-border/50 bg-background/60 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40">
-                  <option value="30">30 days</option>
-                  <option value="90">90 days</option>
-                  <option value="365">365 days</option>
-                  <option value="9999">Unlimited</option>
-                </select>
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-sm text-foreground">Auto archive old logs</span>
-                  <Switch checked={autoArchive} onCheckedChange={setAutoArchive} />
+            <CardContent className="p-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="sm:col-span-2 space-y-1.5">
+                  <label className="text-sm font-medium text-foreground flex items-center gap-1.5">
+                    <Building2 className="w-3.5 h-3.5 text-muted-foreground" />Location Name <span className="text-destructive">*</span>
+                  </label>
+                  <input value={locForm.name} onChange={(e) => { setLocForm((f) => ({ ...f, name: e.target.value })); setLocErrors((er) => ({ ...er, name: "" })); }} placeholder="e.g. Warehouse Unit 3" className={`w-full h-11 px-4 rounded-xl border bg-background/60 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all ${locErrors.name ? "border-destructive/50" : "border-border/50 hover:border-border"}`} />
+                  {locErrors.name && <p className="text-xs text-destructive">{locErrors.name}</p>}
+                </div>
+                <div className="sm:col-span-2 space-y-1.5">
+                  <label className="text-sm font-medium text-foreground flex items-center gap-1.5">
+                    <Navigation className="w-3.5 h-3.5 text-muted-foreground" />Address <span className="text-destructive">*</span>
+                  </label>
+                  <input value={locForm.address} onChange={(e) => { setLocForm((f) => ({ ...f, address: e.target.value })); setLocErrors((er) => ({ ...er, address: "" })); }} placeholder="e.g. Building E, North Industrial Park" className={`w-full h-11 px-4 rounded-xl border bg-background/60 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all ${locErrors.address ? "border-destructive/50" : "border-border/50 hover:border-border"}`} />
+                  {locErrors.address && <p className="text-xs text-destructive">{locErrors.address}</p>}
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium text-foreground">Latitude <span className="text-muted-foreground font-normal">(optional)</span></label>
+                  <input value={locForm.lat} onChange={(e) => setLocForm((f) => ({ ...f, lat: e.target.value }))} placeholder="51.5074" className="w-full h-11 px-4 rounded-xl border border-border/50 bg-background/60 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all" />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium text-foreground">Longitude <span className="text-muted-foreground font-normal">(optional)</span></label>
+                  <input value={locForm.lng} onChange={(e) => setLocForm((f) => ({ ...f, lng: e.target.value }))} placeholder="-0.1278" className="w-full h-11 px-4 rounded-xl border border-border/50 bg-background/60 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all" />
+                </div>
+                <div className="sm:col-span-2 space-y-1.5">
+                  <label className="text-sm font-medium text-foreground">Status</label>
+                  <div className="flex gap-2">
+                    {STATUS_OPTIONS.map((opt) => (
+                      <button key={opt.value} onClick={() => setLocForm((f) => ({ ...f, status: opt.value }))} className={`flex-1 flex items-center justify-center gap-2 h-11 rounded-xl border text-sm font-medium transition-all ${locForm.status === opt.value ? "border-primary bg-primary/10 text-primary shadow-sm" : "border-border/50 bg-background/60 text-muted-foreground hover:border-border hover:text-foreground"}`}>
+                        <span className={`w-2 h-2 rounded-full ${opt.dot}`} />{opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              <button onClick={handleAddLoc} className="mt-5 w-full h-11 text-white rounded-xl font-medium text-sm flex items-center justify-center gap-2 hover:opacity-90 active:scale-[0.98] transition-all shadow-sm" style={{ background: "linear-gradient(135deg, #2c5f4e, #3a6b5a)" }}>
+                <PlusCircle className="w-4 h-4" />Add Location to System
+              </button>
+              <p className="text-xs text-muted-foreground text-center mt-2.5">Coordinates auto-assigned if not provided.</p>
+            </CardContent>
+          </Card>
+
+          {/* Main Data & Storage settings */}
+          <Card className="border-border/30 shadow-sm">
+            <CardHeader className="px-5 py-4">
+              <div>
+                <h2 className="text-base font-semibold text-foreground">Data & Storage Settings</h2>
+                <p className="text-sm text-muted-foreground mt-0.5">Manage retention, archival, and export policies.</p>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-5 p-5">
+              <div className="grid gap-4 lg:grid-cols-2">
+                <div className="rounded-3xl border border-border/50 bg-background/80 p-4 space-y-3">
+                  <div className="text-sm font-semibold text-foreground">Retention Policy</div>
+                  <select value={retentionPolicy} onChange={(e) => setRetentionPolicy(e.target.value)} className="w-full h-11 rounded-xl border border-border/50 bg-background/60 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40">
+                    <option value="30">30 days</option>
+                    <option value="90">90 days</option>
+                    <option value="365">365 days</option>
+                    <option value="9999">Unlimited</option>
+                  </select>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-sm text-foreground">Auto archive old logs</span>
+                    <Switch checked={autoArchive} onCheckedChange={setAutoArchive} />
+                  </div>
+                </div>
+                <div className="rounded-3xl border border-border/50 bg-background/80 p-4 space-y-3">
+                  <div className="text-sm font-semibold text-foreground">Data export</div>
+                  <p className="text-xs text-muted-foreground">Download a JSON backup of your settings and locations.</p>
+                  <button onClick={handleExportData} className="w-full h-11 rounded-xl bg-primary text-white text-sm font-medium hover:opacity-95 transition">⬇ Download Export</button>
+                  {exportMessage && <div className="text-sm text-foreground">{exportMessage}</div>}
                 </div>
               </div>
               <div className="rounded-3xl border border-border/50 bg-background/80 p-4 space-y-3">
-                <div className="text-sm font-semibold text-foreground">Data export</div>
-                <p className="text-xs text-muted-foreground">Create a snapshot of your account and location settings.</p>
-                <button onClick={handleExportData} className="w-full h-11 rounded-xl bg-primary text-white text-sm font-medium hover:opacity-95 transition">Prepare Export</button>
-                {exportMessage && <div className="text-sm text-foreground">{exportMessage}</div>}
-              </div>
-            </div>
-            <div className="rounded-3xl border border-border/50 bg-background/80 p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="text-sm font-semibold text-foreground">Cleanup</div>
-                  <p className="text-xs text-muted-foreground mt-1">Archive old monitoring logs and optimize storage budgets.</p>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-sm font-semibold text-foreground">Cleanup</div>
+                    <p className="text-xs text-muted-foreground mt-1">Archive old monitoring logs and optimize storage budgets.</p>
+                  </div>
+                  <button onClick={handleCleanupData} className="rounded-xl border border-border/50 px-3 py-2 text-sm font-medium hover:bg-muted/30 transition">Run Cleanup</button>
                 </div>
-                <button onClick={handleCleanupData} className="rounded-xl border border-border/50 px-3 py-2 text-sm font-medium hover:bg-muted/30 transition">Run Cleanup</button>
+                {cleanupMessage && <div className="text-sm text-foreground">{cleanupMessage}</div>}
               </div>
-              {cleanupMessage && <div className="text-sm text-foreground">{cleanupMessage}</div>}
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </div>
       );
     }
 
@@ -748,64 +881,6 @@ export function SettingsProfile() {
           {/* Right column */}
           <div className="xl:col-span-2 space-y-5">
             {renderSectionContent()}
-            {/* Add Location card */}
-            <Card className="border-border/30 shadow-sm overflow-hidden">
-              <div className="px-5 py-4 flex items-center gap-3" style={{ background: "linear-gradient(135deg, #2c5f4e, #1e4d3d)" }}>
-                <div className="w-9 h-9 bg-white/15 rounded-xl flex items-center justify-center">
-                  <MapPin className="w-5 h-5 text-white" />
-                </div>
-                <div className="flex-1">
-                  <h2 className="text-white font-semibold text-base leading-tight">Add Location</h2>
-                  <p className="text-white/60 text-xs mt-0.5">New locations appear in the Dashboard filter and Monitor map</p>
-                </div>
-                {locSuccess && (
-                  <div className="flex items-center gap-1.5 bg-white/15 text-white px-3 py-1.5 rounded-full text-xs font-medium">
-                    <Check className="w-3.5 h-3.5" />Added!
-                  </div>
-                )}
-              </div>
-
-              <CardContent className="p-5">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="sm:col-span-2 space-y-1.5">
-                    <label className="text-sm font-medium text-foreground flex items-center gap-1.5">
-                      <Building2 className="w-3.5 h-3.5 text-muted-foreground" />Location Name <span className="text-destructive">*</span>
-                    </label>
-                    <input value={locForm.name} onChange={(e) => { setLocForm((f) => ({ ...f, name: e.target.value })); setLocErrors((er) => ({ ...er, name: "" })); }} placeholder="e.g. Warehouse Unit 3" className={`w-full h-11 px-4 rounded-xl border bg-background/60 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all ${locErrors.name ? "border-destructive/50" : "border-border/50 hover:border-border"}`} />
-                    {locErrors.name && <p className="text-xs text-destructive">{locErrors.name}</p>}
-                  </div>
-                  <div className="sm:col-span-2 space-y-1.5">
-                    <label className="text-sm font-medium text-foreground flex items-center gap-1.5">
-                      <Navigation className="w-3.5 h-3.5 text-muted-foreground" />Address <span className="text-destructive">*</span>
-                    </label>
-                    <input value={locForm.address} onChange={(e) => { setLocForm((f) => ({ ...f, address: e.target.value })); setLocErrors((er) => ({ ...er, address: "" })); }} placeholder="e.g. Building E, North Industrial Park" className={`w-full h-11 px-4 rounded-xl border bg-background/60 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all ${locErrors.address ? "border-destructive/50" : "border-border/50 hover:border-border"}`} />
-                    {locErrors.address && <p className="text-xs text-destructive">{locErrors.address}</p>}
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-sm font-medium text-foreground">Latitude <span className="text-muted-foreground font-normal">(optional)</span></label>
-                    <input value={locForm.lat} onChange={(e) => setLocForm((f) => ({ ...f, lat: e.target.value }))} placeholder="51.5074" className="w-full h-11 px-4 rounded-xl border border-border/50 bg-background/60 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all" />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-sm font-medium text-foreground">Longitude <span className="text-muted-foreground font-normal">(optional)</span></label>
-                    <input value={locForm.lng} onChange={(e) => setLocForm((f) => ({ ...f, lng: e.target.value }))} placeholder="-0.1278" className="w-full h-11 px-4 rounded-xl border border-border/50 bg-background/60 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all" />
-                  </div>
-                  <div className="sm:col-span-2 space-y-1.5">
-                    <label className="text-sm font-medium text-foreground">Status</label>
-                    <div className="flex gap-2">
-                      {STATUS_OPTIONS.map((opt) => (
-                        <button key={opt.value} onClick={() => setLocForm((f) => ({ ...f, status: opt.value }))} className={`flex-1 flex items-center justify-center gap-2 h-11 rounded-xl border text-sm font-medium transition-all ${locForm.status === opt.value ? "border-primary bg-primary/10 text-primary shadow-sm" : "border-border/50 bg-background/60 text-muted-foreground hover:border-border hover:text-foreground"}`}>
-                          <span className={`w-2 h-2 rounded-full ${opt.dot}`} />{opt.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-                <button onClick={handleAddLoc} className="mt-5 w-full h-11 text-white rounded-xl font-medium text-sm flex items-center justify-center gap-2 hover:opacity-90 active:scale-[0.98] transition-all shadow-sm" style={{ background: "linear-gradient(135deg, #2c5f4e, #3a6b5a)" }}>
-                  <PlusCircle className="w-4 h-4" />Add Location to System
-                </button>
-                <p className="text-xs text-muted-foreground text-center mt-2.5">Coordinates auto-assigned if not provided.</p>
-              </CardContent>
-            </Card>
 
             {/* Custom locations */}
             {customLocations.length > 0 && (

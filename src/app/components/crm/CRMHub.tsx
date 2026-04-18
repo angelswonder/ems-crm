@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useApp } from '../../contexts/AppContext';
-import { LayoutDashboard, Users, Building2, UserCircle, Target, AlertCircle, CheckSquare, CalendarDays, Megaphone, Plus, ShieldAlert, Folder, Layout } from 'lucide-react';
+import { LayoutDashboard, Users, Building2, UserCircle, Target, AlertCircle, CheckSquare, CalendarDays, Megaphone, Plus, ShieldAlert, Folder, Layout, Mail } from 'lucide-react';
 import { CRMDashboard } from './CRMDashboard';
 import { loadCustomObjectConfig } from '../../utils/crmStorageUtils';
 import { LeadsModule } from './LeadsModule';
@@ -11,6 +11,7 @@ import { CasesModule } from './CasesModule';
 import { TasksModule } from './TasksModule';
 import { CalendarModule } from './CalendarModule';
 import { CampaignsModule } from './CampaignsModule';
+import { EmailModule } from './EmailModule';
 import { CustomObjectBuilder } from './CustomObjectBuilder';
 import { FolderManagement } from './FolderManagement';
 import { DashboardTemplateManager } from './DashboardTemplateManager';
@@ -25,6 +26,7 @@ const TABS = [
   { id: 'tasks',         label: 'Tasks',           icon: CheckSquare },
   { id: 'calendar',      label: 'Calendar',        icon: CalendarDays },
   { id: 'campaigns',     label: 'Campaigns',       icon: Megaphone },
+  { id: 'emails',        label: 'Emails',          icon: Mail },
 ] as const;
 
 type TabId = typeof TABS[number]['id'];
@@ -73,6 +75,7 @@ export function CRMHub() {
       case 'tasks':         return <TasksModule />;
       case 'calendar':      return <CalendarModule />;
       case 'campaigns':     return <CampaignsModule />;
+      case 'emails':        return <EmailModule />;
       default:
         if (activeTab.startsWith('custom-')) {
           const customTab = crmTabs.find((tab) => tab.id === activeTab);
