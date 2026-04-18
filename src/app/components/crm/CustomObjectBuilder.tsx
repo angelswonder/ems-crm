@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Plus, Trash2, Table2, TrendingUp, BarChart3, X } from 'lucide-react';
 import { toast } from 'sonner';
+import { loadCustomObjectConfig, saveCustomObjectConfig } from '../../utils/crmStorageUtils';
 
 export interface CustomObject {
   id: string;
@@ -34,6 +35,14 @@ export function CustomObjectBuilder({ objectId, objectName, onClose }: Props) {
   const [displayType, setDisplayType] = useState<'table' | 'dashboard' | 'hybrid'>('table');
   const [newFieldName, setNewFieldName] = useState('');
   const [newFieldType, setNewFieldType] = useState<CustomField['type']>('text');
+
+  useEffect(() => {
+    const existingConfig = loadCustomObjectConfig(objectId);
+    if (existingConfig) {
+      setFields(existingConfig.fields);
+      setDisplayType(existingConfig.displayType);
+    }
+  }, [objectId]);
 
   const addField = () => {
     if (!newFieldName.trim()) {
@@ -79,7 +88,7 @@ export function CustomObjectBuilder({ objectId, objectName, onClose }: Props) {
       recordCount: 0,
       lastModified: new Date().toISOString(),
     };
-    localStorage.setItem(`crm_object_${objectId}`, JSON.stringify(config));
+    saveCustomObjectConfig(config);
     toast.success(`"${objectName}" object configured with ${fields.length} fields`);
   };
 

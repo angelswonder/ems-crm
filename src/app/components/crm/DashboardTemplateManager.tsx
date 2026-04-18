@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Plus, Edit2, Trash2, Copy, Save, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { useApp } from '../../contexts/AppContext';
+import { loadTemplates, saveTemplates } from '../../utils/crmStorageUtils';
 
 export interface DashboardTemplate {
   id: string;
@@ -79,6 +80,19 @@ export function DashboardTemplateManager({ onClose }: Props) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showNewTemplate, setShowNewTemplate] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<DashboardTemplate | null>(null);
+
+  useEffect(() => {
+    const stored = loadTemplates();
+    if (stored.length) {
+      setTemplates(stored);
+    } else {
+      saveTemplates(templates);
+    }
+  }, []);
+
+  useEffect(() => {
+    saveTemplates(templates);
+  }, [templates]);
 
   const createTemplate = (template: DashboardTemplate) => {
     setTemplates([...templates, { ...template, id: `template-${Date.now()}` }]);

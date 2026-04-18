@@ -14,9 +14,23 @@ export function Dashboard() {
   const [selectedDevices, setSelectedDevices] = useState<string[]>([]);
   const [dataMode, setDataMode] = useState("real-time");
   const [selectedDay, setSelectedDay] = useState("today");
+  const [appliedFilters, setAppliedFilters] = useState({
+    selectedFilterType,
+    selectedDevice,
+    selectedDevices,
+    dataMode,
+    selectedDay,
+  });
 
   const handleApplyFilters = () => {
-    console.log("Applying filters:", { filterType: selectedFilterType, device: selectedDevice, devices: selectedDevices, dataMode, selectedDay });
+    const payload = {
+      selectedFilterType,
+      selectedDevice,
+      selectedDevices,
+      dataMode,
+      selectedDay,
+    };
+    setAppliedFilters(payload);
   };
 
   const handleFilterTypeChange = (type: "device" | "virtual-group") => {
@@ -67,19 +81,25 @@ export function Dashboard() {
           onApplyFilters={handleApplyFilters}
         />
 
+        <div className="rounded-3xl border border-border/30 bg-card/70 p-4 shadow-sm">
+          <p className="text-sm text-muted-foreground">
+            Showing data for <span className="text-foreground font-semibold">{appliedFilters.selectedFilterType === 'device' ? appliedFilters.selectedDevice : appliedFilters.selectedDevices.length ? appliedFilters.selectedDevices.join(', ') : 'all selected devices'}</span> over <span className="text-foreground font-semibold">{appliedFilters.selectedDay.replace('-', ' ')}</span> in <span className="text-foreground font-semibold">{appliedFilters.dataMode}</span> mode.
+          </p>
+        </div>
+
         {/* Energy Parameters */}
         <EnergyParameters
-          dataMode={dataMode}
-          selectedDevice={selectedFilterType === "device" ? selectedDevice : selectedDevices.join(",")}
+          dataMode={appliedFilters.dataMode}
+          selectedDevice={appliedFilters.selectedFilterType === "device" ? appliedFilters.selectedDevice : appliedFilters.selectedDevices.join(",")}
         />
 
         {/* Charts */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <ConsumptionChart
-            selectedDay={selectedDay}
-            selectedDevice={selectedFilterType === "device" ? selectedDevice : selectedDevices.join(",")}
+            selectedDay={appliedFilters.selectedDay}
+            selectedDevice={appliedFilters.selectedFilterType === "device" ? appliedFilters.selectedDevice : appliedFilters.selectedDevices.join(",")}
           />
-          <DemandChart dataMode={dataMode} selectedDay={selectedDay} />
+          <DemandChart dataMode={appliedFilters.dataMode} selectedDay={appliedFilters.selectedDay} />
         </div>
       </div>
     </div>

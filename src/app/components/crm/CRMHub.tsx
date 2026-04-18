@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useApp } from '../../contexts/AppContext';
 import { LayoutDashboard, Users, Building2, UserCircle, Target, AlertCircle, CheckSquare, CalendarDays, Megaphone, Plus, ShieldAlert, Folder, Layout } from 'lucide-react';
 import { CRMDashboard } from './CRMDashboard';
+import { loadCustomObjectConfig } from '../../utils/crmStorageUtils';
 import { LeadsModule } from './LeadsModule';
 import { AccountsModule } from './AccountsModule';
 import { ContactsModule } from './ContactsModule';
@@ -75,6 +76,7 @@ export function CRMHub() {
       default:
         if (activeTab.startsWith('custom-')) {
           const customTab = crmTabs.find((tab) => tab.id === activeTab);
+          const customObjectConfig = loadCustomObjectConfig(activeTab);
           return (
             <div className="rounded-3xl bg-card border border-border/30 p-10 text-center">
               <div className="mx-auto mb-4 inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-secondary text-foreground">
@@ -84,6 +86,36 @@ export function CRMHub() {
               <p className="mt-3 text-sm text-muted-foreground max-w-md mx-auto">
                 Click "Configure Object" to define fields, data types, and display preferences for this custom CRM object.
               </p>
+              {customObjectConfig ? (
+                <div className="mt-6 rounded-3xl border border-border/30 bg-muted/50 p-5 text-left">
+                  <p className="text-sm font-semibold text-foreground mb-2">Object Summary</p>
+                  <p className="text-sm text-muted-foreground">Display Type: <span className="font-medium text-foreground">{customObjectConfig.displayType}</span></p>
+                  <p className="text-sm text-muted-foreground">Fields: <span className="font-medium text-foreground">{customObjectConfig.fields.length}</span></p>
+                  <p className="text-sm text-muted-foreground">Last Modified: <span className="font-medium text-foreground">{new Date(customObjectConfig.lastModified).toLocaleString()}</span></p>
+                  <div className="mt-4 overflow-x-auto">
+                    <table className="w-full text-sm border-collapse">
+                      <thead>
+                        <tr className="border-b border-border/20 text-left text-muted-foreground">
+                          <th className="py-2">Label</th>
+                          <th className="py-2">Name</th>
+                          <th className="py-2">Type</th>
+                          <th className="py-2">Required</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {customObjectConfig.fields.map((field) => (
+                          <tr key={field.id} className="border-b border-border/10">
+                            <td className="py-2 text-foreground">{field.label}</td>
+                            <td className="py-2 text-muted-foreground font-mono text-xs">{field.name}</td>
+                            <td className="py-2 text-muted-foreground">{field.type}</td>
+                            <td className="py-2 text-muted-foreground">{field.required ? 'Yes' : 'No'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ) : null}
               {currentUser?.role === 'admin' && (
                 <button
                   onClick={() => {

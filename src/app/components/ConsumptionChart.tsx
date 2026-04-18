@@ -8,7 +8,7 @@ interface ConsumptionChartProps {
 
 export function ConsumptionChart({ selectedDay, selectedDevice }: ConsumptionChartProps) {
   // Mock data - in real app this would come from API based on filters
-  const consumptionData = [
+  const baseData = [
     { name: "Device 1 - Main Building", value: 2400, color: "#22c55e" },
     { name: "Device 2 - Manufacturing", value: 4567, color: "#16a34a" },
     { name: "Device 3 - Office Block", value: 1890, color: "#15803d" },
@@ -16,6 +16,25 @@ export function ConsumptionChart({ selectedDay, selectedDevice }: ConsumptionCha
     { name: "Lighting", value: 1250, color: "#14532d" },
     { name: "Equipment", value: 2100, color: "#052e16" },
   ];
+
+  const dayFactor = selectedDay === 'today'
+    ? 1
+    : selectedDay === 'yesterday'
+    ? 0.88
+    : selectedDay === 'last-7-days'
+    ? 0.73
+    : 0.58;
+
+  const deviceFactor = selectedDevice.includes('group')
+    ? 1.24
+    : selectedDevice === ''
+    ? 0.95
+    : 1;
+
+  const consumptionData = baseData.map((item) => ({
+    ...item,
+    value: Math.max(120, Math.round(item.value * dayFactor * deviceFactor)),
+  }));
 
   const totalConsumption = consumptionData.reduce((sum, item) => sum + item.value, 0);
 

@@ -8,7 +8,7 @@ interface DemandChartProps {
 
 export function DemandChart({ dataMode, selectedDay }: DemandChartProps) {
   // Mock data - in real app this would come from API based on filters
-  const demandData = [
+  const baseData = [
     { time: "00:00", maxDemand: 1200, actualDemand: 890 },
     { time: "02:00", maxDemand: 1200, actualDemand: 750 },
     { time: "04:00", maxDemand: 1200, actualDemand: 650 },
@@ -22,6 +22,26 @@ export function DemandChart({ dataMode, selectedDay }: DemandChartProps) {
     { time: "20:00", maxDemand: 1200, actualDemand: 1220 },
     { time: "22:00", maxDemand: 1200, actualDemand: 1010 },
   ];
+
+  const dayFactor = selectedDay === 'today'
+    ? 1
+    : selectedDay === 'yesterday'
+    ? 0.9
+    : selectedDay === 'last-7-days'
+    ? 0.75
+    : 0.6;
+
+  const modeFactor = dataMode === 'real-time'
+    ? 1
+    : dataMode === 'historical'
+    ? 0.85
+    : 0.95;
+
+  const demandData = baseData.map((item) => ({
+    ...item,
+    maxDemand: Math.max(700, Math.round(item.maxDemand * dayFactor * modeFactor)),
+    actualDemand: Math.max(450, Math.round(item.actualDemand * dayFactor * modeFactor)),
+  }));
 
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {

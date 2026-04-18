@@ -3,7 +3,7 @@ import { Users, Building2, Target, AlertCircle, TrendingUp, CheckSquare, Megapho
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 import { listRecords } from './crmApi';
 import { useApp } from '../../contexts/AppContext';
-import { loadTemplates, getUserTemplatePreferences, saveUserTemplatePreferences, getDefaultTemplateForRole } from '../utils/crmStorageUtils';
+import { loadTemplates, getUserTemplatePreferences, saveUserTemplatePreferences, getDefaultTemplateForRole } from '../../utils/crmStorageUtils';
 import type { Lead, Account, Opportunity, Case, Task, Campaign } from './crmTypes';
 import type { DashboardTemplate } from './DashboardTemplateManager';
 

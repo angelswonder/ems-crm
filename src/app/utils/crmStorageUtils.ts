@@ -159,6 +159,38 @@ export function unassignTemplateFromUser(template: DashboardTemplate, userIds: s
   };
 }
 
+// ===== CUSTOM OBJECT UTILITIES =====
+
+export interface CRMObjectConfig {
+  objectId: string;
+  name: string;
+  fields: {
+    id: string;
+    name: string;
+    label: string;
+    type: string;
+    required: boolean;
+  }[];
+  displayType: 'table' | 'dashboard' | 'hybrid';
+  recordCount: number;
+  lastModified: string;
+}
+
+const OBJECT_CONFIG_PREFIX = 'crm_object_';
+
+export function saveCustomObjectConfig(config: CRMObjectConfig): void {
+  localStorage.setItem(`${OBJECT_CONFIG_PREFIX}${config.objectId}`, JSON.stringify(config));
+}
+
+export function loadCustomObjectConfig(objectId: string): CRMObjectConfig | null {
+  const stored = localStorage.getItem(`${OBJECT_CONFIG_PREFIX}${objectId}`);
+  return stored ? JSON.parse(stored) : null;
+}
+
+export function deleteCustomObjectConfig(objectId: string): void {
+  localStorage.removeItem(`${OBJECT_CONFIG_PREFIX}${objectId}`);
+}
+
 // ===== COMBINED UTILITIES =====
 
 export interface CRMState {
