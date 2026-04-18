@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { useApp, ROLE_LABELS } from "../contexts/AppContext";
-import { Zap, Mail, Lock, Eye, EyeOff, AlertCircle, ChevronDown } from "lucide-react";
+import { useApp } from "../contexts/AppContext";
+import { Zap, Mail, Lock, Eye, EyeOff, AlertCircle } from "lucide-react";
 
 export function LoginPage() {
   const { login } = useApp();
@@ -9,14 +9,6 @@ export function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [showHints, setShowHints] = useState(false);
-
-  const DEMO_ACCOUNTS = [
-    { role: "System Administrator", email: "wonderayobami@energymanagement.com", password: "wonderjay1234", color: "from-emerald-600 to-teal-700" },
-    { role: "Manager",              email: "manager@energymanagement.com",        password: "manager2024",    color: "from-blue-600 to-indigo-700" },
-    { role: "Team Leader",          email: "teamleader@energymanagement.com",     password: "teamlead2024",   color: "from-violet-600 to-purple-700" },
-    { role: "Project Supervisor",   email: "supervisor@energymanagement.com",     password: "supervisor2024", color: "from-amber-600 to-orange-700" },
-  ];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,11 +18,6 @@ export function LoginPage() {
     const ok = login(username.trim(), password);
     if (!ok) setError("Invalid email or password. Please check your credentials.");
     setLoading(false);
-  };
-
-  const quickLogin = (email: string, pw: string) => {
-    setUsername(email);
-    setPassword(pw);
   };
 
   return (
@@ -188,40 +175,8 @@ export function LoginPage() {
               </button>
             </form>
 
-            {/* Demo accounts */}
-            <div className="mt-5">
-              <button
-                onClick={() => setShowHints((s) => !s)}
-                className="w-full flex items-center justify-between text-sm text-muted-foreground hover:text-foreground transition-colors py-2 border-t border-border/30"
-              >
-                <span>Demo accounts</span>
-                <ChevronDown className={`w-4 h-4 transition-transform ${showHints ? "rotate-180" : ""}`} />
-              </button>
-
-              {showHints && (
-                <div className="mt-3 space-y-2">
-                  {DEMO_ACCOUNTS.map((acc) => (
-                    <button
-                      key={acc.email}
-                      onClick={() => quickLogin(acc.email, acc.password)}
-                      className="w-full flex items-center gap-3 p-3 rounded-xl border border-border/30 hover:bg-muted/40 transition-all text-left group"
-                    >
-                      <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${acc.color} flex items-center justify-center flex-shrink-0`}>
-                        <span className="text-white text-xs font-bold">
-                          {acc.role.split(" ").map((w) => w[0]).join("").slice(0, 2)}
-                        </span>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="text-xs font-medium text-foreground truncate">{acc.role}</div>
-                        <div className="text-xs text-muted-foreground truncate">{acc.email}</div>
-                      </div>
-                      <span className="text-xs text-muted-foreground group-hover:text-primary transition-colors opacity-0 group-hover:opacity-100">
-                        Use →
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              )}
+            <div className="mt-5 text-sm text-muted-foreground">
+              Access is restricted to authorized EMS users only. Please contact your administrator if you need a new account.
             </div>
           </div>
         </div>

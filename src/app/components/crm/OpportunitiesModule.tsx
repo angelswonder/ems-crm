@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Plus, Search, Edit2, Trash2, X, Target, DollarSign, Calendar, TrendingUp, LayoutGrid, List } from 'lucide-react';
+import { Plus, Search, Edit2, Trash2, X, Target, DollarSign, Calendar, TrendingUp, LayoutGrid, List, Columns } from 'lucide-react';
 import { toast } from 'sonner';
 import { listRecords, createRecord, updateRecord, deleteRecord } from './crmApi';
 import type { Opportunity, Account } from './crmTypes';
@@ -76,7 +76,7 @@ export function OpportunitiesModule() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filterStage, setFilterStage] = useState('');
-  const [viewMode, setViewMode] = useState<'list' | 'kanban'>('list');
+  const [viewMode, setViewMode] = useState<'list' | 'split' | 'kanban'>('list');
   const [selected, setSelected] = useState<Opportunity | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [editMode, setEditMode] = useState(false);
@@ -168,6 +168,7 @@ export function OpportunitiesModule() {
         <div className="flex items-center gap-2">
           <div className="flex bg-muted rounded-lg p-0.5">
             <button onClick={() => setViewMode('list')} className={`p-1.5 rounded-md transition-colors ${viewMode === 'list' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}><List className="w-4 h-4" /></button>
+            <button onClick={() => setViewMode('split')} className={`p-1.5 rounded-md transition-colors ${viewMode === 'split' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}><Columns className="w-4 h-4" /></button>
             <button onClick={() => setViewMode('kanban')} className={`p-1.5 rounded-md transition-colors ${viewMode === 'kanban' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}><LayoutGrid className="w-4 h-4" /></button>
           </div>
           <button onClick={openNew} className="flex items-center gap-2 px-4 py-2 rounded-xl text-white text-sm font-medium shadow-sm hover:opacity-90 transition-all" style={{ background: 'linear-gradient(135deg, #2c5f4e, #3a6b5a)' }}>
@@ -235,6 +236,86 @@ export function OpportunitiesModule() {
               </table>
             </div>
           )}
+        </div>
+      ) : viewMode === 'split' ? (
+        <div className="grid grid-cols-1 xl:grid-cols-[1.4fr_2.2fr] gap-4">
+          <div className="bg-card rounded-2xl border border-border/30 overflow-hidden shadow-sm">
+            {loading ? (
+              <div className="p-12 text-center text-muted-foreground">Loading opportunities...</div>
+            ) : filtered.length === 0 ? (
+              <div className="p-12 text-center text-muted-foreground">No opportunities found</div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border/30 bg-muted/30">
+                      <th className="text-left px-4 py-3 font-medium text-muted-foreground">Opportunity</th>
+                      <th className="text-left px-4 py-3 font-medium text-muted-foreground">Stage</th>
+                      <th className="text-left px-4 py-3 font-medium text-muted-foreground">Amount</th>
+                      <th className="text-left px-4 py-3 font-medium text-muted-foreground">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filtered.map(r => (
+                      <tr key={r.id} className="border-b border-border/20 hover:bg-muted/20 transition-colors cursor-pointer" onClick={() => openView(r)}>
+                        <td className="px-4 py-3 font-medium text-foreground">{r.name}</td>
+                        <td className="px-4 py-3"><Badge label={r.stage} colorClass={STAGE_COLORS[r.stage] ?? 'bg-gray-100 text-gray-700'} /></td>
+                        <td className="px-4 py-3 text-foreground font-medium">{r.amount ? `£${r.amount.toLocaleString()}` : '-'}</td>
+                        <td className="px-4 py-3">
+                          <div className="flex gap-1" onClick={e => e.stopPropagation()}>
+                            <button onClick={() => openEdit(r)} className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"><Edit2 className="w-3.5 h-3.5" /></button>
+                            <button onClick={() => setDeleteId(r.id)} className="p-1.5 rounded-lg hover:bg-red-50 text-muted-foreground hover:text-red-600 transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          <div className="bg-card rounded-2xl border border-border/30 p-4 shadow-sm overflow-x-auto">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-sm font-semibold text-foreground">Pipeline Preview</h3>
+                <p className="text-xs text-muted-foreground">Kanban pipeline and opportunity details together</p>
+              </div>
+              <span className="text-xs text-muted-foreground">{filtered.length} items</span>
+            </div>
+            <div className="flex gap-4 min-w-max">
+              {KANBAN_STAGES.map(stage => {
+                const stageRecords = filtered.filter(r => r.stage === stage);
+                const stageValue = stageRecords.reduce((s, r) => s + (r.amount ?? 0), 0);
+                return (
+                  <div key={stage} className="w-64 flex-shrink-0">
+                    <div className="bg-muted/50 rounded-2xl p-3 border border-border/30">
+                      <div className="flex items-center justify-between mb-3">
+                        <div>
+                          <p className="text-xs font-semibold text-foreground">{stage}</p>
+                          <p className="text-xs text-muted-foreground">{stageRecords.length} items · £{stageValue.toLocaleString()}</p>
+                        </div>
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${STAGE_COLORS[stage] ?? 'bg-gray-100 text-gray-700'}`}>{STAGE_PROBS[stage]}%</span>
+                      </div>
+                      <div className="space-y-2 max-h-[520px] overflow-y-auto">
+                        {stageRecords.map(r => (
+                          <div key={r.id} onClick={() => openView(r)} className="bg-card rounded-xl p-3 border border-border/20 cursor-pointer hover:shadow-md transition-all hover:border-primary/30">
+                            <p className="text-sm font-medium text-foreground truncate">{r.name}</p>
+                            <p className="text-xs text-muted-foreground truncate">{r.accountName}</p>
+                            <div className="flex items-center justify-between mt-2">
+                              <span className="text-sm font-semibold text-primary">£{(r.amount ?? 0).toLocaleString()}</span>
+                              <span className="text-xs text-muted-foreground">{r.closeDate ? new Date(r.closeDate).toLocaleDateString('en-GB', { month: 'short', day: 'numeric' }) : ''}</span>
+                            </div>
+                          </div>
+                        ))}
+                        {stageRecords.length === 0 && <p className="text-xs text-muted-foreground text-center py-4">No opportunities</p>}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </div>
       ) : (
         // Kanban / Pipeline View

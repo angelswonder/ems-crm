@@ -39,6 +39,20 @@ function MetricCard({ icon: Icon, label, value, sub, color }: { icon: React.Elem
 export function CRMDashboard() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [dashboardMode, setDashboardMode] = useState<'overview' | 'pipeline' | 'activity'>('overview');
+  const [widgetVisibility, setWidgetVisibility] = useState({
+    leads: true,
+    accounts: true,
+    pipeline: true,
+    cases: true,
+    tasks: true,
+    campaigns: true,
+    activity: true,
+  });
+
+  const toggleWidget = (key: keyof typeof widgetVisibility) => {
+    setWidgetVisibility((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
 
   useEffect(() => {
     const loadAll = async () => {
@@ -100,24 +114,80 @@ export function CRMDashboard() {
 
   return (
     <div className="space-y-6">
+      <div className="grid gap-4 xl:grid-cols-[2fr_1fr]">
+        <div className="bg-card rounded-2xl border border-border/30 p-5 shadow-sm">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground mb-2">Dashboard Builder</p>
+              <h2 className="text-lg font-semibold text-foreground">Custom CRM Dashboard</h2>
+              <p className="text-sm text-muted-foreground mt-1">Switch modes and choose the widgets that matter for your CRM workflow.</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {(['overview', 'pipeline', 'activity'] as const).map((mode) => (
+                <button
+                  key={mode}
+                  onClick={() => setDashboardMode(mode)}
+                  className={`rounded-xl px-4 py-2 text-sm font-medium transition ${dashboardMode === mode ? 'bg-primary text-white' : 'bg-muted text-muted-foreground hover:bg-slate-200'}`}
+                >
+                  {mode === 'overview' ? 'Overview' : mode === 'pipeline' ? 'Pipeline' : 'Activity'}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="mt-5 grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {Object.entries(widgetVisibility).map(([key, visible]) => (
+              <button
+                key={key}
+                onClick={() => toggleWidget(key as keyof typeof widgetVisibility)}
+                className={`rounded-2xl border px-3 py-2 text-sm transition ${visible ? 'border-primary bg-primary/10 text-foreground' : 'border-border bg-background text-muted-foreground hover:bg-muted/70'}`}
+              >
+                {key.charAt(0).toUpperCase() + key.slice(1)}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="bg-card rounded-2xl border border-border/30 p-5 shadow-sm">
+          <p className="text-sm font-semibold text-foreground mb-3">Dashboard instructions</p>
+          <p className="text-sm text-muted-foreground leading-6">Use the mode selector to switch between a high-level overview, pipeline focus, or recent activity focus. Toggle widgets on or off to make the dashboard feel more like a Salesforce-style workspace.</p>
+        </div>
+      </div>
+
       {/* Metric Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <MetricCard icon={Users} label="Total Leads" value={leads.length}
-          sub={`${leads.filter(l => l.status === 'New').length} new this period`} color="bg-blue-500" />
-        <MetricCard icon={Building2} label="Accounts" value={accounts.length}
-          sub={`${accounts.filter(a => a.type === 'Customer').length} customers`} color="bg-purple-500" />
-        <MetricCard icon={Target} label="Pipeline Value" value={`£${(pipelineValue / 1000).toFixed(0)}K`}
-          sub={`£${(wonValue / 1000).toFixed(0)}K won this period`} color="bg-emerald-500" />
-        <MetricCard icon={AlertCircle} label="Open Cases" value={openCases}
-          sub={`${cases.filter(c => c.priority === 'Critical' && c.status !== 'Closed').length} critical`} color="bg-red-500" />
-        <MetricCard icon={CheckSquare} label="Open Tasks" value={pendingTasks}
-          sub={`${tasks.filter(t => t.status === 'Completed').length} completed`} color="bg-amber-500" />
-        <MetricCard icon={Megaphone} label="Active Campaigns" value={campaigns.filter(c => c.status === 'In Progress').length}
-          sub={`${campaigns.length} total campaigns`} color="bg-pink-500" />
-        <MetricCard icon={DollarSign} label="Won Revenue" value={`£${(wonValue / 1000).toFixed(0)}K`}
-          sub={`${opportunities.filter(o => o.stage === 'Closed Won').length} closed won`} color="bg-teal-500" />
-        <MetricCard icon={Activity} label="Total Activities" value={tasks.length + leads.length}
-          sub="Leads + Tasks tracked" color="bg-indigo-500" />
+        {widgetVisibility.leads && (
+          <MetricCard icon={Users} label="Total Leads" value={leads.length}
+            sub={`${leads.filter(l => l.status === 'New').length} new this period`} color="bg-blue-500" />
+        )}
+        {widgetVisibility.accounts && (
+          <MetricCard icon={Building2} label="Accounts" value={accounts.length}
+            sub={`${accounts.filter(a => a.type === 'Customer').length} customers`} color="bg-purple-500" />
+        )}
+        {widgetVisibility.pipeline && (
+          <MetricCard icon={Target} label="Pipeline Value" value={`£${(pipelineValue / 1000).toFixed(0)}K`}
+            sub={`£${(wonValue / 1000).toFixed(0)}K won this period`} color="bg-emerald-500" />
+        )}
+        {widgetVisibility.cases && (
+          <MetricCard icon={AlertCircle} label="Open Cases" value={openCases}
+            sub={`${cases.filter(c => c.priority === 'Critical' && c.status !== 'Closed').length} critical`} color="bg-red-500" />
+        )}
+        {widgetVisibility.tasks && (
+          <MetricCard icon={CheckSquare} label="Open Tasks" value={pendingTasks}
+            sub={`${tasks.filter(t => t.status === 'Completed').length} completed`} color="bg-amber-500" />
+        )}
+        {widgetVisibility.campaigns && (
+          <MetricCard icon={Megaphone} label="Active Campaigns" value={campaigns.filter(c => c.status === 'In Progress').length}
+            sub={`${campaigns.length} total campaigns`} color="bg-pink-500" />
+        )}
+        {widgetVisibility.pipeline && (
+          <MetricCard icon={DollarSign} label="Won Revenue" value={`£${(wonValue / 1000).toFixed(0)}K`}
+            sub={`${opportunities.filter(o => o.stage === 'Closed Won').length} closed won`} color="bg-teal-500" />
+        )}
+        {widgetVisibility.activity && (
+          <MetricCard icon={Activity} label="Total Activities" value={tasks.length + leads.length}
+            sub="Leads + Tasks tracked" color="bg-indigo-500" />
+        )}
       </div>
 
       {/* Charts Row 1 */}
