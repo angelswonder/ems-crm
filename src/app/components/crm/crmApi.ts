@@ -1,4 +1,4 @@
-import { projectId, publicAnonKey } from '/utils/supabase/info';
+import { projectId, publicAnonKey } from '../../../utils/supabase/info';
 
 const BASE = `https://${projectId}.supabase.co/functions/v1/make-server-3bce8755/crm`;
 
