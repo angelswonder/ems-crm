@@ -187,6 +187,31 @@ export function useApp() {
   return ctx;
 }
 
+/* ─── Storage Helpers ─────────────────────────────────────────────── */
+function loadStoredTheme(): ThemeName {
+  try {
+    const stored = localStorage.getItem("ems-theme");
+    if (stored === "light" || stored === "dark" || stored === "solar" || stored === "corporate" || stored === "ocean") {
+      return stored;
+    }
+  } catch (e) {
+    // localStorage not available
+  }
+  return "light";
+}
+
+function loadStoredLayoutMode(): LayoutMode {
+  try {
+    const stored = localStorage.getItem("ems-layout-mode");
+    if (stored === "standard" || stored === "compact" || stored === "spacious") {
+      return stored;
+    }
+  } catch (e) {
+    // localStorage not available
+  }
+  return "standard";
+}
+
 /* ─── Provider ─────────────────────────────────────────────────────── */
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -201,8 +226,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }]);
   const [notifications, setNotifications] = useState<MailNotification[]>(INITIAL_NOTIFICATIONS);
   const [locations, setLocations] = useState<Location[]>(DEFAULT_LOCATIONS);
-  const [theme, setTheme] = useState<ThemeName>("light");
-  const [layoutMode, setLayoutMode] = useState<LayoutMode>("standard");
+  const [theme, setThemeState] = useState<ThemeName>(loadStoredTheme());
+  const [layoutMode, setLayoutModeState] = useState<LayoutMode>(loadStoredLayoutMode());
 
   const currentUser = useMemo(
     () => users.find((u) => u.id === currentUserId) ?? null,
@@ -288,7 +313,23 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const removeLocation = useCallback((id: string) => {
     setLocations((prev) => prev.filter((l) => l.id !== id));
   }, []);
+  const setTheme = useCallback((newTheme: ThemeName) => {
+    setThemeState(newTheme);
+    try {
+      localStorage.setItem("ems-theme", newTheme);
+    } catch (e) {
+      // localStorage not available
+    }
+  }, []);
 
+  const setLayoutMode = useCallback((mode: LayoutMode) => {
+    setLayoutModeState(mode);
+    try {
+      localStorage.setItem("ems-layout-mode", mode);
+    } catch (e) {
+      // localStorage not available
+    }
+  }, []);
   useEffect(() => {
     const classes = ["dark", "theme-solar", "theme-corporate", "theme-ocean"];
     const root = document.documentElement;

@@ -22,6 +22,7 @@ import {
   X,
   Mail,
   Lock,
+  Code2,
 } from "lucide-react";
 
 const STATUS_OPTIONS = [
@@ -36,6 +37,7 @@ const SETTINGS_SECTIONS = [
   { icon: Palette,  label: "Appearance",      desc: "Theme & display" },
   { icon: Database, label: "Data & Storage",  desc: "Export & retention" },
   { icon: Globe,    label: "Integrations",    desc: "APIs & webhooks" },
+  { icon: Code2,    label: "About",          desc: "Developer & info" },
 ];
 
 const ROLE_GRADIENT: Record<string, string> = {
@@ -519,6 +521,85 @@ export function SettingsProfile() {
                 <button onClick={handleCleanupData} className="rounded-xl border border-border/50 px-3 py-2 text-sm font-medium hover:bg-muted/30 transition">Run Cleanup</button>
               </div>
               {cleanupMessage && <div className="text-sm text-foreground">{cleanupMessage}</div>}
+            </div>
+          </CardContent>
+        </Card>
+      );
+    }
+
+    if (activeSection === "About") {
+      return (
+        <Card className="border-border/30 shadow-sm">
+          <CardHeader className="px-5 py-4">
+            <div>
+              <h2 className="text-base font-semibold text-foreground">About</h2>
+              <p className="text-sm text-muted-foreground mt-0.5">System information and development team.</p>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-5 p-5">
+            <div className="rounded-3xl border border-border/50 bg-background/80 p-5 space-y-4">
+              <div>
+                <div className="text-sm font-semibold text-foreground">System Name</div>
+                <div className="text-sm text-muted-foreground mt-2">Industrial Management Tracking System (EMS)</div>
+              </div>
+              <div className="border-t border-border/20 pt-4">
+                <div className="text-sm font-semibold text-foreground">Version</div>
+                <div className="text-sm text-muted-foreground mt-2">v1.0.0 (React + TypeScript)</div>
+              </div>
+              <div className="border-t border-border/20 pt-4">
+                <div className="text-sm font-semibold text-foreground mb-2">Technology Stack</div>
+                <div className="space-y-1">
+                  <div className="text-xs text-muted-foreground">• React 18 + TypeScript</div>
+                  <div className="text-xs text-muted-foreground">• Vite Build Tool</div>
+                  <div className="text-xs text-muted-foreground">• Tailwind CSS + shadcn/ui</div>
+                  <div className="text-xs text-muted-foreground">• Local Storage Persistence</div>
+                </div>
+              </div>
+              <div className="border-t border-border/20 pt-4">
+                <div className="text-sm font-semibold text-foreground mb-2">Developer & Organization</div>
+                <div className="flex items-center gap-3 rounded-2xl border border-border/50 bg-muted/30 px-4 py-3">
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold" style={{ background: "linear-gradient(135deg, #2c5f4e, #3a6b5a)" }}>
+                    AW
+                  </div>
+                  <div className="flex-1">
+                    <div className="text-sm font-semibold text-foreground">angelswonder</div>
+                    <div className="text-xs text-muted-foreground mt-0.5">Lead Developer & Organization</div>
+                  </div>
+                </div>
+              </div>
+              <div className="border-t border-border/20 pt-4">
+                <div className="text-sm font-semibold text-foreground mb-2">Features</div>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <span className="w-1.5 h-1.5 rounded-full" style={{ background: "#2c5f4e" }} />
+                    <span>Multi-role user management with granular permissions</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <span className="w-1.5 h-1.5 rounded-full" style={{ background: "#2c5f4e" }} />
+                    <span>Real-time energy monitoring and analytics dashboards</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <span className="w-1.5 h-1.5 rounded-full" style={{ background: "#2c5f4e" }} />
+                    <span>Integrated CRM system with templates and custom objects</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <span className="w-1.5 h-1.5 rounded-full" style={{ background: "#2c5f4e" }} />
+                    <span>Advanced notification, security, and data management settings</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <span className="w-1.5 h-1.5 rounded-full" style={{ background: "#2c5f4e" }} />
+                    <span>Multiple theme support with persistent storage</span>
+                  </div>
+                </div>
+              </div>
+              <div className="border-t border-border/20 pt-4">
+                <div className="text-sm font-semibold text-foreground mb-3">Data Persistence</div>
+                <div className="rounded-2xl border border-border/50 bg-muted/30 px-4 py-3">
+                  <div className="text-xs text-muted-foreground">
+                    <span className="font-medium text-foreground">Theme & Layout:</span> Settings are automatically saved to your browser's local storage and restored on your next visit.
+                  </div>
+                </div>
+              </div>
             </div>
           </CardContent>
         </Card>
