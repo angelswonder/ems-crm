@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, useMemo } from "react";
+import React, { createContext, useContext, useState, useCallback, useMemo, useEffect } from "react";
 
 /* ─── Types ────────────────────────────────────────────────────────── */
 export type SectionId =
@@ -48,6 +48,8 @@ export interface User {
   password: string;
   role: UserRole;
   companyEmail: string;
+  phoneNumber?: string;
+  twoFactorEnabled?: boolean;
   permissions: SectionId[];
   initials: string;
 }
@@ -102,6 +104,8 @@ const DEFAULT_USERS: User[] = [
     password: "wonderjay1234",
     role: "admin",
     companyEmail: "wonderayobami@energymanagement.com",
+    phoneNumber: "+1 (555) 010-0010",
+    twoFactorEnabled: true,
     permissions: ["dashboard","analytics","monitor","configuration","reports","settings","messaging","crm"],
     initials: "WA",
   },
@@ -112,6 +116,7 @@ const DEFAULT_USERS: User[] = [
     password: "manager2024",
     role: "manager",
     companyEmail: "manager@energymanagement.com",
+    phoneNumber: "+1 (555) 010-0020",
     permissions: ["dashboard","analytics","monitor","reports","settings","messaging","crm"],
     initials: "SM",
   },
@@ -148,12 +153,17 @@ const INITIAL_NOTIFICATIONS: MailNotification[] = DEFAULT_USERS.filter((u) => u.
 }));
 
 /* ─── Context ──────────────────────────────────────────────────────── */
-interface AppContextType {
+export type ThemeName = "light" | "dark" | "solar" | "corporate" | "ocean";
+export type LayoutMode = "standard" | "compact" | "spacious";
+
+export interface AppContextType {
   currentUser: User | null;
   users: User[];
   messages: ChatMessage[];
   notifications: MailNotification[];
   locations: Location[];
+  theme: ThemeName;
+  layoutMode: LayoutMode;
   login: (username: string, password: string) => boolean;
   logout: () => void;
   updateUser: (userId: string, updates: Partial<Omit<User, "id">>, sendNotif?: boolean) => void;
@@ -165,6 +175,8 @@ interface AppContextType {
   markAllRead: () => void;
   addLocation: (loc: Location) => void;
   removeLocation: (id: string) => void;
+  setTheme: (theme: ThemeName) => void;
+  setLayoutMode: (mode: LayoutMode) => void;
 }
 
 const AppContext = createContext<AppContextType | null>(null);
@@ -189,6 +201,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }]);
   const [notifications, setNotifications] = useState<MailNotification[]>(INITIAL_NOTIFICATIONS);
   const [locations, setLocations] = useState<Location[]>(DEFAULT_LOCATIONS);
+  const [theme, setTheme] = useState<ThemeName>("light");
+  const [layoutMode, setLayoutMode] = useState<LayoutMode>("standard");
 
   const currentUser = useMemo(
     () => users.find((u) => u.id === currentUserId) ?? null,
@@ -275,12 +289,30 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setLocations((prev) => prev.filter((l) => l.id !== id));
   }, []);
 
+  useEffect(() => {
+    const classes = ["dark", "theme-solar", "theme-corporate", "theme-ocean"];
+    const root = document.documentElement;
+    root.classList.remove(...classes);
+
+    if (theme === "dark") {
+      root.classList.add("dark");
+    } else if (theme === "solar") {
+      root.classList.add("theme-solar");
+    } else if (theme === "corporate") {
+      root.classList.add("theme-corporate");
+    } else if (theme === "ocean") {
+      root.classList.add("theme-ocean");
+    }
+  }, [theme]);
+
   return (
     <AppContext.Provider value={{
       currentUser, users, messages, notifications, locations,
+      theme, layoutMode,
       login, logout, updateUser, addUser, removeUser,
       sendMessage, addNotification, markNotificationRead, markAllRead,
       addLocation, removeLocation,
+      setTheme, setLayoutMode,
     }}>
       {children}
     </AppContext.Provider>

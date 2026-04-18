@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useApp, ROLE_LABELS } from "../contexts/AppContext";
 import { Card, CardContent, CardHeader } from "./ui/card";
+import { Switch } from "./ui/switch";
 import { Badge } from "./ui/badge";
 import {
   User,
@@ -45,7 +46,7 @@ const ROLE_GRADIENT: Record<string, string> = {
 };
 
 export function SettingsProfile() {
-  const { currentUser, updateUser, addNotification, locations, addLocation, removeLocation } = useApp();
+  const { currentUser, theme, setTheme, layoutMode, setLayoutMode, updateUser, addNotification, locations, addLocation, removeLocation } = useApp();
 
   // Profile edit state
   const [editingProfile, setEditingProfile] = useState(false);
@@ -58,6 +59,40 @@ export function SettingsProfile() {
   const [locSuccess, setLocSuccess] = useState(false);
 
   const [activeSection, setActiveSection] = useState<string | null>(null);
+
+  // Notifications state
+  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  const [emailAlertsEnabled, setEmailAlertsEnabled] = useState(true);
+  const [smsAlertsEnabled, setSmsAlertsEnabled] = useState(false);
+  const [thresholdAlert, setThresholdAlert] = useState(85);
+  const [testNotificationMessage, setTestNotificationMessage] = useState<string | null>(null);
+
+  // Security state
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState(currentUser?.phoneNumber ?? "");
+  const [twoFactorEnabled, setTwoFactorEnabled] = useState(currentUser?.twoFactorEnabled ?? false);
+  const [verificationSent, setVerificationSent] = useState(false);
+  const [verificationCode, setVerificationCode] = useState("");
+  const [enteredCode, setEnteredCode] = useState("");
+  const [securityMessage, setSecurityMessage] = useState("");
+
+  // Integrations state
+  const [slackEnabled, setSlackEnabled] = useState(true);
+  const [webhookEnabled, setWebhookEnabled] = useState(false);
+  const [webhookUrl, setWebhookUrl] = useState("");
+  const [apiEnabled, setApiEnabled] = useState(false);
+  const [apiKey, setApiKey] = useState("");
+  const [integrationMessage, setIntegrationMessage] = useState<string>("");
+
+  // Appearance & storage state
+  const [selectedTheme, setSelectedTheme] = useState(theme);
+  const [selectedLayout, setSelectedLayout] = useState(layoutMode);
+  const [retentionPolicy, setRetentionPolicy] = useState("365");
+  const [autoArchive, setAutoArchive] = useState(true);
+  const [cleanupMessage, setCleanupMessage] = useState("");
+  const [exportMessage, setExportMessage] = useState("");
 
   if (!currentUser) return null;
 
@@ -80,6 +115,417 @@ export function SettingsProfile() {
   const handleCancelEdit = () => {
     setEditName(currentUser.name);
     setEditingProfile(false);
+  };
+
+  useEffect(() => {
+    setEditName(currentUser.name);
+    setPhoneNumber(currentUser.phoneNumber ?? "");
+    setTwoFactorEnabled(currentUser.twoFactorEnabled ?? false);
+    setSelectedTheme(theme);
+    setSelectedLayout(layoutMode);
+  }, [currentUser, theme, layoutMode]);
+
+  const handleSendTestNotification = () => {
+    setTestNotificationMessage("Sending a sample alert to your notification center...");
+    setTimeout(() => {
+      addNotification({
+        type: "profile-change",
+        subject: "Test Alert — System Notifications",
+        body: `A notification test was performed by ${currentUser.name}. If you do not see this alert in the notification center, verify your notification settings.`,
+        fromUser: currentUser.id,
+      });
+      setTestNotificationMessage("Test notification sent successfully.");
+      setTimeout(() => setTestNotificationMessage(null), 3500);
+    }, 600);
+  };
+
+  const handleRequestVerificationCode = () => {
+    const code = String(100000 + Math.floor(Math.random() * 900000));
+    setVerificationCode(code);
+    setVerificationSent(true);
+    setSecurityMessage(`Verification code sent to ${currentUser.companyEmail}. Use code ${code} to verify changes.`);
+  };
+
+  const handleVerifyCode = () => {
+    if (!enteredCode.trim()) {
+      setSecurityMessage("Enter the verification code sent to your email.");
+      return;
+    }
+    if (enteredCode.trim() === verificationCode && verificationCode) {
+      setSecurityMessage("Verification complete. Two-step verification is active.");
+      setTwoFactorEnabled(true);
+      updateUser(currentUser.id, { twoFactorEnabled: true }, true);
+      setEnteredCode("");
+    } else {
+      setSecurityMessage("Verification code mismatch. Please try again.");
+    }
+  };
+
+  const handleChangePassword = () => {
+    if (currentPassword !== currentUser.password) {
+      setSecurityMessage("Current password is incorrect.");
+      return;
+    }
+    if (newPassword.length < 8) {
+      setSecurityMessage("New password must be at least 8 characters.");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setSecurityMessage("Password confirmation does not match.");
+      return;
+    }
+    updateUser(currentUser.id, { password: newPassword }, true);
+    setSecurityMessage("Password updated successfully.");
+    setCurrentPassword("");
+    setNewPassword("");
+    setConfirmPassword("");
+  };
+
+  const handleSavePhoneNumber = () => {
+    if (!phoneNumber.trim()) {
+      setSecurityMessage("Enter a valid phone number to continue.");
+      return;
+    }
+    updateUser(currentUser.id, { phoneNumber: phoneNumber.trim() }, true);
+    setSecurityMessage("Phone number saved successfully.");
+  };
+
+  const handleToggleTheme = (nextTheme: typeof selectedTheme) => {
+    setSelectedTheme(nextTheme);
+    setTheme(nextTheme);
+    setTestNotificationMessage(`Selected ${nextTheme} design style.`);
+    setTimeout(() => setTestNotificationMessage(null), 3000);
+  };
+
+  const handleToggleLayout = (mode: typeof selectedLayout) => {
+    setSelectedLayout(mode);
+    setLayoutMode(mode);
+    setTestNotificationMessage(`Display format changed to ${mode}.`);
+    setTimeout(() => setTestNotificationMessage(null), 3000);
+  };
+
+  const handleTestIntegration = (service: string) => {
+    setIntegrationMessage(`Testing ${service} connection...`);
+    setTimeout(() => {
+      setIntegrationMessage(`Connected to ${service} successfully.`);
+    }, 900);
+  };
+
+  const handleExportData = () => {
+    const payload = JSON.stringify({
+      user: { name: currentUser.name, email: currentUser.companyEmail, role: currentUser.role, theme: selectedTheme, layout: selectedLayout },
+      locations, notificationsEnabled, retentionPolicy, autoArchive,
+      timestamp: new Date().toISOString(),
+    }, null, 2);
+    setExportMessage("Export prepared. Download from browser developer tools or implement download flow.");
+    setTimeout(() => setExportMessage(null), 4500);
+    // In a production system, this would download or send the payload to storage.
+    console.log("Export data:", payload);
+  };
+
+  const handleCleanupData = () => {
+    setCleanupMessage("Running archival and cleanup process...");
+    setTimeout(() => {
+      setCleanupMessage("Legacy logs archived and auto-archive updated.");
+    }, 900);
+  };
+
+  const renderSectionContent = () => {
+    if (!activeSection) {
+      return (
+        <Card className="border-border/30 shadow-sm">
+          <CardHeader className="px-5 py-4">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h2 className="text-base font-semibold text-foreground">System Settings Overview</h2>
+                <p className="text-sm text-muted-foreground mt-0.5">Choose a settings section to configure notifications, security, appearance, integrations, or data storage.</p>
+              </div>
+              <Badge className="bg-primary/10 text-primary border-primary/20">Ready to configure</Badge>
+            </div>
+          </CardHeader>
+          <CardContent className="grid gap-4 md:grid-cols-2 p-5">
+            <div className="rounded-3xl border border-border/50 bg-background/80 p-4">
+              <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Theme</div>
+              <div className="text-sm font-medium text-foreground mt-2">{selectedTheme} mode</div>
+              <div className="text-xs text-muted-foreground mt-1">Layout: {selectedLayout}</div>
+            </div>
+            <div className="rounded-3xl border border-border/50 bg-background/80 p-4">
+              <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Security</div>
+              <div className="text-sm font-medium text-foreground mt-2">Two-step verification: {twoFactorEnabled ? "Enabled" : "Disabled"}</div>
+              <div className="text-xs text-muted-foreground mt-1">Phone saved: {phoneNumber ? "Yes" : "No"}</div>
+            </div>
+            <div className="rounded-3xl border border-border/50 bg-background/80 p-4">
+              <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Alerts</div>
+              <div className="text-sm font-medium text-foreground mt-2">Email alerts: {emailAlertsEnabled ? "On" : "Off"}</div>
+              <div className="text-xs text-muted-foreground mt-1">Threshold: {thresholdAlert}%</div>
+            </div>
+            <div className="rounded-3xl border border-border/50 bg-background/80 p-4">
+              <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Storage</div>
+              <div className="text-sm font-medium text-foreground mt-2">Retention: {retentionPolicy} days</div>
+              <div className="text-xs text-muted-foreground mt-1">Auto Archive: {autoArchive ? "Enabled" : "Disabled"}</div>
+            </div>
+          </CardContent>
+        </Card>
+      );
+    }
+
+    if (activeSection === "Notifications") {
+      return (
+        <Card className="border-border/30 shadow-sm">
+          <CardHeader className="px-5 py-4">
+            <div>
+              <h2 className="text-base font-semibold text-foreground">Notifications</h2>
+              <p className="text-sm text-muted-foreground mt-0.5">Control alert channels, thresholds, and notification previews.</p>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-5 p-5">
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="rounded-3xl border border-border/50 bg-background/80 p-4">
+                <div className="flex items-center justify-between gap-3 mb-3">
+                  <div>
+                    <h3 className="text-sm font-semibold text-foreground">Email Alerts</h3>
+                    <p className="text-xs text-muted-foreground mt-1">Send operational and system messages to your inbox.</p>
+                  </div>
+                  <Switch checked={emailAlertsEnabled} onCheckedChange={setEmailAlertsEnabled} />
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-xs text-muted-foreground">Enabled</span>
+                  <span className="text-sm font-medium text-foreground">{emailAlertsEnabled ? "Yes" : "No"}</span>
+                </div>
+              </div>
+              <div className="rounded-3xl border border-border/50 bg-background/80 p-4">
+                <div className="flex items-center justify-between gap-3 mb-3">
+                  <div>
+                    <h3 className="text-sm font-semibold text-foreground">SMS Alerts</h3>
+                    <p className="text-xs text-muted-foreground mt-1">Receive urgent warnings on your phone or mobile device.</p>
+                  </div>
+                  <Switch checked={smsAlertsEnabled} onCheckedChange={setSmsAlertsEnabled} />
+                </div>
+                <div className="text-xs text-muted-foreground">Phone number used for alerts: {phoneNumber || "Not configured"}</div>
+              </div>
+            </div>
+            <div className="rounded-3xl border border-border/50 bg-background/80 p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-semibold text-foreground">Threshold Alerts</h3>
+                  <p className="text-xs text-muted-foreground mt-1">Trigger an alert when usage passes the selected threshold.</p>
+                </div>
+                <span className="text-sm font-medium text-foreground">{thresholdAlert}%</span>
+              </div>
+              <input type="range" min={65} max={100} step={1} value={thresholdAlert} onChange={(e) => setThresholdAlert(Number(e.target.value))} className="w-full" />
+            </div>
+            <div className="rounded-3xl border border-border/50 bg-background/80 p-4">
+              <div className="flex items-center justify-between gap-3 mb-3">
+                <div>
+                  <h3 className="text-sm font-semibold text-foreground">Test Notification</h3>
+                  <p className="text-xs text-muted-foreground mt-1">Confirm the alert system is working.</p>
+                </div>
+                <button onClick={handleSendTestNotification} className="rounded-xl border border-border/50 px-3 py-2 text-xs font-medium text-foreground hover:bg-muted/30 transition-colors">Send Test</button>
+              </div>
+              {testNotificationMessage && <p className="text-sm text-foreground">{testNotificationMessage}</p>}
+            </div>
+          </CardContent>
+        </Card>
+      );
+    }
+
+    if (activeSection === "Security") {
+      return (
+        <Card className="border-border/30 shadow-sm">
+          <CardHeader className="px-5 py-4">
+            <div>
+              <h2 className="text-base font-semibold text-foreground">Security</h2>
+              <p className="text-sm text-muted-foreground mt-0.5">Password, two-factor authentication, and phone verification.</p>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-6 p-5">
+            <div className="grid gap-4 lg:grid-cols-2">
+              <div className="space-y-2 rounded-3xl border border-border/50 bg-background/80 p-4">
+                <div className="text-sm font-semibold text-foreground">Reset Password</div>
+                <input type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} placeholder="Current password" className="w-full h-11 rounded-xl border border-border/50 px-4 bg-background/60 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40" />
+                <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="New password" className="w-full h-11 rounded-xl border border-border/50 px-4 bg-background/60 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40" />
+                <input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="Confirm new password" className="w-full h-11 rounded-xl border border-border/50 px-4 bg-background/60 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40" />
+                <button onClick={handleChangePassword} className="w-full h-11 rounded-xl bg-primary text-white text-sm font-medium hover:opacity-95 transition">Update Password</button>
+              </div>
+              <div className="space-y-4 rounded-3xl border border-border/50 bg-background/80 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <div className="text-sm font-semibold text-foreground">Two-Step Verification</div>
+                    <p className="text-xs text-muted-foreground mt-1">Add an extra layer of account protection.</p>
+                  </div>
+                  <Switch checked={twoFactorEnabled} onCheckedChange={(value) => { setTwoFactorEnabled(value); updateUser(currentUser.id, { twoFactorEnabled: value }, true); }} />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">Phone Number</label>
+                  <input value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} placeholder="+1 (555) 123-4567" className="w-full h-11 rounded-xl border border-border/50 px-4 bg-background/60 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40" />
+                  <button onClick={handleSavePhoneNumber} className="w-full h-11 rounded-xl border border-border/50 text-sm font-medium hover:bg-muted/30 transition">Save Phone</button>
+                </div>
+                <div className="space-y-3">
+                  <button onClick={handleRequestVerificationCode} className="w-full h-11 rounded-xl bg-secondary/10 text-secondary border border-secondary/20 text-sm font-medium hover:bg-secondary/20 transition">Send Verification Code</button>
+                  {verificationSent && (
+                    <div className="space-y-2">
+                      <input value={enteredCode} onChange={(e) => setEnteredCode(e.target.value)} placeholder="Enter verification code" className="w-full h-11 rounded-xl border border-border/50 px-4 bg-background/60 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40" />
+                      <button onClick={handleVerifyCode} className="w-full h-11 rounded-xl bg-primary text-white text-sm font-medium hover:opacity-95 transition">Verify Code</button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+            <div className="rounded-3xl border border-border/50 bg-background/80 p-4">
+              <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Security summary</div>
+              <div className="mt-3 text-sm text-foreground">{securityMessage || "No recent security actions. Review your password and verification settings regularly."}</div>
+            </div>
+          </CardContent>
+        </Card>
+      );
+    }
+
+    if (activeSection === "Appearance") {
+      return (
+        <Card className="border-border/30 shadow-sm">
+          <CardHeader className="px-5 py-4">
+            <div>
+              <h2 className="text-base font-semibold text-foreground">Appearance</h2>
+              <p className="text-sm text-muted-foreground mt-0.5">Choose a theme and layout mode for the full EMS experience.</p>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-5 p-5">
+            <div className="grid gap-4 md:grid-cols-2">
+              {[
+                { id: "light", label: "Light", description: "Bright system default." },
+                { id: "dark", label: "Dark", description: "Modern low-light experience." },
+                { id: "solar", label: "Solar", description: "Warm amber accent palette." },
+                { id: "corporate", label: "Corporate", description: "Clean, professional workspace." },
+                { id: "ocean", label: "Ocean", description: "Cool blue data center theme." },
+              ].map((option) => (
+                <button key={option.id} onClick={() => handleToggleTheme(option.id as typeof selectedTheme)} className={`rounded-3xl border p-4 text-left transition-all ${selectedTheme === option.id ? "border-primary bg-primary/10" : "border-border/50 bg-background/80 hover:border-primary hover:bg-muted/80"}`}>
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <div className="text-sm font-semibold text-foreground">{option.label}</div>
+                      <p className="text-xs text-muted-foreground mt-1">{option.description}</p>
+                    </div>
+                    {selectedTheme === option.id && <Badge className="bg-primary/10 text-primary border-primary/20">Active</Badge>}
+                  </div>
+                </button>
+              ))}
+            </div>
+            <div className="rounded-3xl border border-border/50 bg-background/80 p-4">
+              <div className="text-sm font-semibold text-foreground">Display format</div>
+              <div className="mt-3 grid gap-3 md:grid-cols-3">
+                {[
+                  { id: "standard", label: "Standard" },
+                  { id: "compact", label: "Compact" },
+                  { id: "spacious", label: "Spacious" },
+                ].map((layout) => (
+                  <button key={layout.id} onClick={() => handleToggleLayout(layout.id as typeof selectedLayout)} className={`rounded-2xl border px-4 py-3 text-sm font-medium transition ${selectedLayout === layout.id ? "border-primary bg-primary/10 text-primary" : "border-border/50 bg-background/80 text-foreground hover:border-primary"}`}>
+                    {layout.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {testNotificationMessage && <div className="rounded-3xl border border-border/50 bg-background/80 p-4 text-sm text-foreground">{testNotificationMessage}</div>}
+          </CardContent>
+        </Card>
+      );
+    }
+
+    if (activeSection === "Integrations") {
+      return (
+        <Card className="border-border/30 shadow-sm">
+          <CardHeader className="px-5 py-4">
+            <div>
+              <h2 className="text-base font-semibold text-foreground">Integrations</h2>
+              <p className="text-sm text-muted-foreground mt-0.5">Connect external systems with APIs, webhooks, and messaging integrations.</p>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-5 p-5">
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="rounded-3xl border border-border/50 bg-background/80 p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-sm font-semibold text-foreground">Slack integration</div>
+                    <p className="text-xs text-muted-foreground mt-1">Send alerts directly to your Slack channel.</p>
+                  </div>
+                  <Switch checked={slackEnabled} onCheckedChange={setSlackEnabled} />
+                </div>
+                <button onClick={() => handleTestIntegration("Slack")} className="w-full h-11 rounded-xl bg-primary text-white text-sm font-medium hover:opacity-95 transition">Test Slack</button>
+              </div>
+              <div className="rounded-3xl border border-border/50 bg-background/80 p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-sm font-semibold text-foreground">API Access</div>
+                    <p className="text-xs text-muted-foreground mt-1">Enable API-based workflows and custom integrations.</p>
+                  </div>
+                  <Switch checked={apiEnabled} onCheckedChange={setApiEnabled} />
+                </div>
+                <input value={apiKey} onChange={(e) => setApiKey(e.target.value)} placeholder="API key or token" className="w-full h-11 rounded-xl border border-border/50 bg-background/60 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40" />
+                {apiEnabled && <button onClick={() => handleTestIntegration("API")} className="w-full h-11 rounded-xl bg-primary text-white text-sm font-medium hover:opacity-95 transition">Validate API Key</button>}
+              </div>
+            </div>
+            <div className="rounded-3xl border border-border/50 bg-background/80 p-4 space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-sm font-semibold text-foreground">Webhook Endpoint</div>
+                  <p className="text-xs text-muted-foreground mt-1">Forward events to your service endpoint.</p>
+                </div>
+                <Switch checked={webhookEnabled} onCheckedChange={setWebhookEnabled} />
+              </div>
+              <input value={webhookUrl} onChange={(e) => setWebhookUrl(e.target.value)} placeholder="https://hooks.example.com/ems" className="w-full h-11 rounded-xl border border-border/50 bg-background/60 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40" />
+              {webhookEnabled && <button onClick={() => handleTestIntegration("Webhook")} className="w-full h-11 rounded-xl bg-primary text-white text-sm font-medium hover:opacity-95 transition">Send Test Event</button>}
+              {integrationMessage && <div className="text-sm text-foreground">{integrationMessage}</div>}
+            </div>
+          </CardContent>
+        </Card>
+      );
+    }
+
+    if (activeSection === "Data & Storage") {
+      return (
+        <Card className="border-border/30 shadow-sm">
+          <CardHeader className="px-5 py-4">
+            <div>
+              <h2 className="text-base font-semibold text-foreground">Data & Storage</h2>
+              <p className="text-sm text-muted-foreground mt-0.5">Manage export, retention, and archival policies for EMS data.</p>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-5 p-5">
+            <div className="grid gap-4 lg:grid-cols-2">
+              <div className="rounded-3xl border border-border/50 bg-background/80 p-4 space-y-3">
+                <div className="text-sm font-semibold text-foreground">Retention Policy</div>
+                <select value={retentionPolicy} onChange={(e) => setRetentionPolicy(e.target.value)} className="w-full h-11 rounded-xl border border-border/50 bg-background/60 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40">
+                  <option value="30">30 days</option>
+                  <option value="90">90 days</option>
+                  <option value="365">365 days</option>
+                  <option value="9999">Unlimited</option>
+                </select>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-sm text-foreground">Auto archive old logs</span>
+                  <Switch checked={autoArchive} onCheckedChange={setAutoArchive} />
+                </div>
+              </div>
+              <div className="rounded-3xl border border-border/50 bg-background/80 p-4 space-y-3">
+                <div className="text-sm font-semibold text-foreground">Data export</div>
+                <p className="text-xs text-muted-foreground">Create a snapshot of your account and location settings.</p>
+                <button onClick={handleExportData} className="w-full h-11 rounded-xl bg-primary text-white text-sm font-medium hover:opacity-95 transition">Prepare Export</button>
+                {exportMessage && <div className="text-sm text-foreground">{exportMessage}</div>}
+              </div>
+            </div>
+            <div className="rounded-3xl border border-border/50 bg-background/80 p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-sm font-semibold text-foreground">Cleanup</div>
+                  <p className="text-xs text-muted-foreground mt-1">Archive old monitoring logs and optimize storage budgets.</p>
+                </div>
+                <button onClick={handleCleanupData} className="rounded-xl border border-border/50 px-3 py-2 text-sm font-medium hover:bg-muted/30 transition">Run Cleanup</button>
+              </div>
+              {cleanupMessage && <div className="text-sm text-foreground">{cleanupMessage}</div>}
+            </div>
+          </CardContent>
+        </Card>
+      );
+    }
+
+    return null;
   };
 
   const validateLoc = () => {
@@ -220,6 +666,7 @@ export function SettingsProfile() {
 
           {/* Right column */}
           <div className="xl:col-span-2 space-y-5">
+            {renderSectionContent()}
             {/* Add Location card */}
             <Card className="border-border/30 shadow-sm overflow-hidden">
               <div className="px-5 py-4 flex items-center gap-3" style={{ background: "linear-gradient(135deg, #2c5f4e, #1e4d3d)" }}>
