@@ -10,6 +10,7 @@ import { CasesModule } from './CasesModule';
 import { TasksModule } from './TasksModule';
 import { CalendarModule } from './CalendarModule';
 import { CampaignsModule } from './CampaignsModule';
+import { CustomObjectBuilder } from './CustomObjectBuilder';
 
 const TABS = [
   { id: 'dashboard',     label: 'Dashboard',      icon: LayoutDashboard },
@@ -42,6 +43,8 @@ export function CRMHub() {
   const [activeTab, setActiveTab] = useState<string>('dashboard');
   const [crmTabs, setCrmTabs] = useState<CRMTab[]>(INITIAL_CRM_TABS);
   const [newObjectName, setNewObjectName] = useState('');
+  const [showObjectBuilder, setShowObjectBuilder] = useState(false);
+  const [selectedObjectId, setSelectedObjectId] = useState<string | null>(null);
 
   const addCustomTab = () => {
     const name = newObjectName.trim();
@@ -49,6 +52,8 @@ export function CRMHub() {
     const id = `custom-${Date.now()}`;
     setCrmTabs((prev) => [...prev, { id, label: name, icon: Target, visible: true, custom: true }]);
     setActiveTab(id);
+    setSelectedObjectId(id);
+    setShowObjectBuilder(true);
     setNewObjectName('');
   };
 
@@ -69,10 +74,23 @@ export function CRMHub() {
           return (
             <div className="rounded-3xl bg-card border border-border/30 p-10 text-center">
               <div className="mx-auto mb-4 inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-secondary text-foreground">
-                <ShieldAlert className="w-6 h-6" />
+                <Target className="w-6 h-6" />
               </div>
               <h2 className="text-lg font-semibold text-foreground">{customTab?.label}</h2>
-              <p className="mt-3 text-sm text-muted-foreground">This is a custom CRM object placeholder. Admins can use this panel to define new CRM objects and tabs for future extension.</p>
+              <p className="mt-3 text-sm text-muted-foreground max-w-md mx-auto">
+                Click "Configure Object" to define fields, data types, and display preferences for this custom CRM object.
+              </p>
+              {currentUser?.role === 'admin' && (
+                <button
+                  onClick={() => {
+                    setSelectedObjectId(activeTab);
+                    setShowObjectBuilder(true);
+                  }}
+                  className="mt-6 px-4 py-2 rounded-xl bg-primary text-white text-sm font-medium hover:opacity-95 transition"
+                >
+                  Configure Object
+                </button>
+              )}
             </div>
           );
         }
@@ -105,8 +123,8 @@ export function CRMHub() {
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
               <div>
                 <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground mb-2">CRM Admin</p>
-                <h2 className="text-lg font-semibold text-foreground">Manage CRM objects and tabs</h2>
-                <p className="text-sm text-muted-foreground mt-1">Add custom CRM objects or update the CRM tab set for your organization.</p>
+                <h2 className="text-lg font-semibold text-foreground">Create Custom CRM Objects</h2>
+                <p className="text-sm text-muted-foreground mt-1">Add new CRM objects with editable fields, tables, and dashboards. Assign to team members.</p>
               </div>
               <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
                 <input
@@ -153,6 +171,15 @@ export function CRMHub() {
       <div className="p-6">
         {renderTab()}
       </div>
+
+      {/* Custom Object Builder Modal */}
+      {showObjectBuilder && selectedObjectId && (
+        <CustomObjectBuilder
+          objectId={selectedObjectId}
+          objectName={crmTabs.find((tab) => tab.id === selectedObjectId)?.label || 'Custom Object'}
+          onClose={() => setShowObjectBuilder(false)}
+        />
+      )}
     </div>
   );
 }

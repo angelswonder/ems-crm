@@ -118,9 +118,9 @@ export function CRMDashboard() {
         <div className="bg-card rounded-2xl border border-border/30 p-5 shadow-sm">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
-              <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground mb-2">Dashboard Builder</p>
-              <h2 className="text-lg font-semibold text-foreground">Custom CRM Dashboard</h2>
-              <p className="text-sm text-muted-foreground mt-1">Switch modes and choose the widgets that matter for your CRM workflow.</p>
+              <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground mb-2">Dashboard Modes</p>
+              <h2 className="text-lg font-semibold text-foreground">CRM {dashboardMode.charAt(0).toUpperCase() + dashboardMode.slice(1)} Dashboard</h2>
+              <p className="text-sm text-muted-foreground mt-1">Customize which widgets appear in your {dashboardMode} view to optimize your workflow.</p>
             </div>
             <div className="flex flex-wrap gap-2">
               {(['overview', 'pipeline', 'activity'] as const).map((mode) => (
@@ -149,8 +149,8 @@ export function CRMDashboard() {
         </div>
 
         <div className="bg-card rounded-2xl border border-border/30 p-5 shadow-sm">
-          <p className="text-sm font-semibold text-foreground mb-3">Dashboard instructions</p>
-          <p className="text-sm text-muted-foreground leading-6">Use the mode selector to switch between a high-level overview, pipeline focus, or recent activity focus. Toggle widgets on or off to make the dashboard feel more like a Salesforce-style workspace.</p>
+          <p className="text-sm font-semibold text-foreground mb-3">Dashboard Controls</p>
+          <p className="text-sm text-muted-foreground leading-6">Switch between Overview (all metrics), Pipeline (sales focused), or Activity (recent items) modes. Toggle widgets on/off to customize. Create templates and assign dashboards to team members.</p>
         </div>
       </div>
 
