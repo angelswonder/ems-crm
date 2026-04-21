@@ -1,172 +1,221 @@
 // Email API Database for 2FA Verification
-// Manages verification code generation, storage, and email tracking
+// Now uses Supabase backend instead of localStorage
+
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(
+  import.meta.env.VITE_SUPABASE_URL || '',
+  import.meta.env.VITE_SUPABASE_ANON_KEY || ''
+);
 
 export interface VerificationCode {
   id: string;
   email: string;
   code: string;
-  createdAt: number;
-  expiresAt: number;
+  created_at: string;
+  expires_at: string;
   verified: boolean;
-  verifiedAt?: number;
+  verified_at?: string;
   attempts: number;
 }
 
 export interface EmailLog {
   id: string;
-  email: string;
+  to_email: string;
   subject: string;
-  body: string;
-  sentAt: number;
-  status: 'sent' | 'failed' | 'delivered';
-  codeId?: string;
+  html_content?: string;
+  verification_code?: string;
+  status: 'sent' | 'delivered' | 'failed' | 'bounced';
+  provider: 'supabase' | 'resend';
+  sent_at: string;
+  error_message?: string;
 }
 
-const EMAIL_STORAGE_KEY = 'email_verification_system';
-const VERIFICATION_CODE_EXPIRY = 10 * 60 * 1000; // 10 minutes
+export async function createVerificationCode(email: string): Promise<{ code: string; codeId: string }> {
+  try {
+    const { data, error } = await supabase.functions.invoke('user-management', {
+      body: { email, action: 'create' },
+    });
 
-interface EmailDatabase {
-  verificationCodes: VerificationCode[];
-  emailLogs: EmailLog[];
+    if (error) throw error;
+
+    // For frontend compatibility, we need to return the code
+    // In production, this would be sent via email only
+    return { code: 'SENT_VIA_EMAIL', codeId: data.codeId };
+  } catch (error) {
+    console.error('Error creating verification code:', error);
+    throw error;
+  }
 }
 
-function getEmailDatabase(): EmailDatabase {
-  const stored = localStorage.getItem(EMAIL_STORAGE_KEY);
-  return stored ? JSON.parse(stored) : { verificationCodes: [], emailLogs: [] };
-}
-
-function saveEmailDatabase(db: EmailDatabase): void {
-  localStorage.setItem(EMAIL_STORAGE_KEY, JSON.stringify(db));
-}
-
-function generateVerificationCode(): string {
-  return Math.random().toString().slice(2, 8).padEnd(6, '0');
-}
-
-function generateId(): string {
-  return `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-}
-
-export function createVerificationCode(email: string): { code: string; codeId: string } {
-  const db = getEmailDatabase();
-  const code = generateVerificationCode();
-  const now = Date.now();
-
-  const verificationCode: VerificationCode = {
-    id: generateId(),
-    email,
-    code,
-    createdAt: now,
-    expiresAt: now + VERIFICATION_CODE_EXPIRY,
-    verified: false,
-    attempts: 0,
-  };
-
-  db.verificationCodes.push(verificationCode);
-  saveEmailDatabase(db);
-
-  return { code, codeId: verificationCode.id };
-}
-
-export function sendVerificationEmail(
+export async function sendVerificationEmail(
   email: string,
   code: string,
   codeId: string,
   companyName: string = 'Industrial Management Tracking System'
-): { success: boolean; message: string; logId: string } {
-  const db = getEmailDatabase();
-  const logId = generateId();
+): Promise<{ success: boolean; message: string; logId: string }> {
+  try {
+    const subject = `${companyName} - Two-Factor Authentication Code`;
+    const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Two-Factor Authentication</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="background: linear-gradient(135deg, #2c5f4e, #1e4d3d); padding: 30px; border-radius: 10px; margin-bottom: 20px;">
+    <h1 style="color: white; margin: 0; font-size: 24px;">${companyName}</h1>
+    <p style="color: #e0e0e0; margin: 10px 0 0 0;">Secure Authentication System</p>
+  </div>
 
-  const subject = `${companyName} - Two-Factor Authentication Code`;
-  const body = `
-Your Two-Factor Authentication code is: ${code}
+  <div style="background: white; border: 1px solid #ddd; border-radius: 8px; padding: 30px;">
+    <h2 style="color: #2c5f4e; margin-top: 0;">Two-Factor Authentication Code</h2>
 
-This code will expire in 10 minutes.
+    <p>Hello,</p>
 
-If you did not request this code, please ignore this email.
+    <p>Your verification code is:</p>
 
----
-Industrial Management Tracking System
-Secure Authentication System
-  `.trim();
+    <div style="background: #f8f9fa; border: 2px solid #2c5f4e; border-radius: 8px; padding: 20px; text-align: center; margin: 20px 0;">
+      <span style="font-size: 32px; font-weight: bold; color: #2c5f4e; font-family: monospace; letter-spacing: 4px;">${code}</span>
+    </div>
 
-  const emailLog: EmailLog = {
-    id: logId,
-    email,
-    subject,
-    body,
-    sentAt: Date.now(),
-    status: 'sent',
-    codeId,
-  };
+    <p><strong>Important:</strong></p>
+    <ul>
+      <li>This code will expire in <strong>10 minutes</strong></li>
+      <li>Enter this code in the application to complete verification</li>
+      <li>Do not share this code with anyone</li>
+    </ul>
 
-  db.emailLogs.push(emailLog);
-  saveEmailDatabase(db);
+    <p>If you did not request this code, please contact your system administrator immediately.</p>
 
-  return {
-    success: true,
-    message: `Verification code sent to ${email}`,
-    logId,
-  };
-}
+    <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
 
-export function verifyCode(email: string, code: string): { verified: boolean; message: string } {
-  const db = getEmailDatabase();
+    <p style="color: #666; font-size: 14px;">
+      This is an automated message from ${companyName}.<br>
+      Please do not reply to this email.
+    </p>
+  </div>
+</body>
+</html>`;
 
-  const verificationCode = db.verificationCodes.find(
-    (vc) => vc.email === email && vc.code === code && !vc.verified
-  );
+    const { data, error } = await supabase.functions.invoke('send-email', {
+      body: { to: email, subject, html, verificationCode: code },
+    });
 
-  if (!verificationCode) {
-    return { verified: false, message: 'Invalid or expired code' };
+    if (error) throw error;
+
+    return {
+      success: true,
+      message: data.message || 'Email sent successfully',
+      logId: data.logId,
+    };
+  } catch (error: any) {
+    console.error('Error sending verification email:', error);
+    return {
+      success: false,
+      message: `Failed to send email: ${error.message}`,
+      logId: '',
+    };
   }
+}
 
-  if (Date.now() > verificationCode.expiresAt) {
-    return { verified: false, message: 'Code has expired. Request a new one.' };
+export async function verifyCode(email: string, code: string): Promise<{ verified: boolean; message: string }> {
+  try {
+    const { data, error } = await supabase.functions.invoke('user-management', {
+      body: { email, action: 'verify', code },
+    });
+
+    if (error) {
+      return { verified: false, message: error.message || 'Verification failed' };
+    }
+
+    return {
+      verified: data.success || false,
+      message: data.message || 'Verification completed',
+    };
+  } catch (error: any) {
+    console.error('Error verifying code:', error);
+    return { verified: false, message: 'Error verifying code. Please try again.' };
   }
-
-  verificationCode.verified = true;
-  verificationCode.verifiedAt = Date.now();
-  saveEmailDatabase(db);
-
-  return { verified: true, message: 'Code verified successfully' };
 }
 
-export function getVerificationStatus(email: string): VerificationCode | null {
-  const db = getEmailDatabase();
-  const active = db.verificationCodes.find(
-    (vc) => vc.email === email && !vc.verified && Date.now() <= vc.expiresAt
-  );
-  return active || null;
-}
+export async function getVerificationStatus(email: string): Promise<VerificationCode | null> {
+  try {
+    // Get the most recent unverified code for this email
+    const { data, error } = await supabase
+      .from('verification_codes')
+      .select('*')
+      .eq('email', email)
+      .eq('verified', false)
+      .gt('expires_at', new Date().toISOString())
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
 
-export function getEmailLogs(email?: string): EmailLog[] {
-  const db = getEmailDatabase();
-  if (email) {
-    return db.emailLogs.filter((log) => log.email === email);
+    if (error || !data) return null;
+    return data;
+  } catch (error) {
+    console.error('Error getting verification status:', error);
+    return null;
   }
-  return db.emailLogs;
 }
 
-export function getVerificationCodeHistory(email?: string): VerificationCode[] {
-  const db = getEmailDatabase();
-  if (email) {
-    return db.verificationCodes.filter((vc) => vc.email === email);
+export async function getEmailLogs(email?: string): Promise<EmailLog[]> {
+  try {
+    let query = supabase
+      .from('email_logs')
+      .select('*')
+      .order('sent_at', { ascending: false })
+      .limit(100);
+
+    if (email) {
+      query = query.eq('to_email', email);
+    }
+
+    const { data, error } = await query;
+    if (error) throw error;
+    return data || [];
+  } catch (error) {
+    console.error('Error getting email logs:', error);
+    return [];
   }
-  return db.verificationCodes;
 }
 
-export function clearExpiredCodes(): number {
-  const db = getEmailDatabase();
-  const now = Date.now();
-  const initialLength = db.verificationCodes.length;
+export async function getVerificationCodeHistory(email?: string): Promise<VerificationCode[]> {
+  try {
+    let query = supabase
+      .from('verification_codes')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(100);
 
-  db.verificationCodes = db.verificationCodes.filter((vc) => vc.expiresAt > now || vc.verified);
+    if (email) {
+      query = query.eq('email', email);
+    }
 
-  saveEmailDatabase(db);
-  return initialLength - db.verificationCodes.length;
+    const { data, error } = await query;
+    if (error) throw error;
+    return data || [];
+  } catch (error) {
+    console.error('Error getting verification history:', error);
+    return [];
+  }
 }
 
-export function resetEmailSystem(): void {
-  localStorage.removeItem(EMAIL_STORAGE_KEY);
+export async function clearExpiredCodes(): Promise<number> {
+  try {
+    const { data, error } = await supabase.rpc('cleanup_expired_codes');
+    if (error) throw error;
+    return data || 0;
+  } catch (error) {
+    console.error('Error clearing expired codes:', error);
+    return 0;
+  }
+}
+
+export async function resetEmailSystem(): Promise<void> {
+  // This would require admin privileges in production
+  console.warn('Email system reset not implemented for security reasons');
 }

@@ -18,6 +18,7 @@ import {
   LogOut,
   Shield,
   Briefcase,
+  Mail,
 } from "lucide-react";
 import { useApp, SectionId, ROLE_LABELS, Location } from "../contexts/AppContext";
 
@@ -34,6 +35,7 @@ const NAV_ITEMS: { id: SectionId; name: string; icon: React.ElementType; descrip
   { id: "configuration",  name: "Configuration",    icon: Shield,           description: "User & system config" },
   { id: "reports",        name: "Reports",          icon: FileText,         description: "Notifications & logs" },
   { id: "messaging",      name: "Messaging",        icon: MessageSquare,    description: "Team chat hub" },
+  { id: "email-admin",    name: "Email Admin",      icon: Mail,             description: "Email system management" },
   { id: "settings",       name: "Settings & Profile",icon: User,            description: "User preferences" },
 ];
 

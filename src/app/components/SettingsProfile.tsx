@@ -25,7 +25,13 @@ import {
   Code2,
 } from "lucide-react";
 import { createVerificationCode, sendVerificationEmail, verifyCode, getVerificationStatus } from "./crm/emailApi";
+import { createClient } from '@supabase/supabase-js';
 import type { VerificationCode } from "./crm/emailApi";
+
+const supabase = createClient(
+  import.meta.env.VITE_SUPABASE_URL || '',
+  import.meta.env.VITE_SUPABASE_ANON_KEY || ''
+);
 
 const STATUS_OPTIONS = [
   { value: "active",   label: "Active",   dot: "bg-green-500" },
@@ -143,18 +149,19 @@ export function SettingsProfile() {
     }, 600);
   };
 
-  const handleRequestVerificationCode = () => {
+  const handleRequestVerificationCode = async () => {
     if (!currentUser.companyEmail?.trim()) {
       setSecurityMessage("No company email found. Please ensure your profile has a valid company email address.");
       return;
     }
 
+    setLoading(true);
     try {
-      // Generate verification code and get code ID
-      const { code, codeId } = createVerificationCode(currentUser.companyEmail);
-      
+      // Create verification code in database
+      const { code, codeId } = await createVerificationCode(currentUser.companyEmail);
+
       // Send the verification email
-      const result = sendVerificationEmail(
+      const result = await sendVerificationEmail(
         currentUser.companyEmail,
         code,
         codeId,
@@ -162,27 +169,30 @@ export function SettingsProfile() {
       );
 
       if (result.success) {
-        setVerificationCode(code); // Store in state for verification (in real app, wouldn't store in frontend)
+        setVerificationCode(code); // Store for frontend verification
         setVerificationSent(true);
         setSecurityMessage(`✓ Verification code sent to ${currentUser.companyEmail}. Code expires in 10 minutes. Check your email inbox.`);
       } else {
-        setSecurityMessage("Failed to send verification code. Please try again.");
+        setSecurityMessage(`❌ ${result.message}`);
       }
-    } catch (error) {
-      setSecurityMessage("Error generating verification code. Please try again.");
+    } catch (error: any) {
+      setSecurityMessage(`❌ Error: ${error.message || 'Failed to send verification code'}`);
       console.error("Error:", error);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleVerifyCode = () => {
+  const handleVerifyCode = async () => {
     if (!enteredCode.trim()) {
       setSecurityMessage("Enter the verification code sent to your email.");
       return;
     }
 
+    setLoading(true);
     try {
       // Verify the code using the email API
-      const result = verifyCode(currentUser.companyEmail || "", enteredCode.trim());
+      const result = await verifyCode(currentUser.companyEmail || "", enteredCode.trim());
 
       if (result.verified) {
         setSecurityMessage("✓ Verification successful. Two-factor verification is now active.");
@@ -193,9 +203,11 @@ export function SettingsProfile() {
       } else {
         setSecurityMessage(`❌ ${result.message}`);
       }
-    } catch (error) {
-      setSecurityMessage("Error verifying code. Please try again.");
+    } catch (error: any) {
+      setSecurityMessage(`❌ Error: ${error.message || 'Error verifying code. Please try again.'}`);
       console.error("Error:", error);
+    } finally {
+      setLoading(false);
     }
   };
 

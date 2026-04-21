@@ -9,7 +9,8 @@ export type SectionId =
   | "reports"
   | "settings"
   | "messaging"
-  | "crm";
+  | "crm"
+  | "email-admin";
 
 export type UserRole = "admin" | "manager" | "team-leader" | "supervisor";
 
@@ -29,6 +30,7 @@ export const ALL_SECTIONS: { id: SectionId; label: string }[] = [
   { id: "settings",     label: "Settings & Profile" },
   { id: "messaging",    label: "Messaging" },
   { id: "crm",          label: "CRM" },
+  { id: "email-admin",  label: "Email Admin" },
 ];
 
 export interface Location {

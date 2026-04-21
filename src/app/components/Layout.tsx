@@ -9,6 +9,7 @@ import { Reports } from "./Reports";
 import { SettingsProfile } from "./SettingsProfile";
 import { Messaging } from "./Messaging";
 import { CRMHub } from "./crm/CRMHub";
+import { EmailAdminPage } from "./EmailAdminPage";
 import { Toaster } from "sonner";
 
 export function Layout() {
@@ -29,6 +30,7 @@ export function Layout() {
       case "settings":      return <SettingsProfile />;
       case "messaging":     return <Messaging />;
       case "crm":           return <CRMHub />;
+      case "email-admin":   return <EmailAdminPage />;
       default:              return <Dashboard />;
     }
   };

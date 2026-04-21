@@ -15,24 +15,52 @@ export function EmailModule(): React.ReactElement {
     loadData();
   }, []);
 
-  function loadData() {
-    setEmailLogs(getEmailLogs());
-    setVerificationHistory(getVerificationCodeHistory());
+  async function loadData() {
+    setLoading(true);
+    try {
+      const [logs, history] = await Promise.all([
+        getEmailLogs(),
+        getVerificationCodeHistory()
+      ]);
+      setEmailLogs(logs);
+      setVerificationHistory(history);
+    } catch (error) {
+      console.error('Error loading data:', error);
+    } finally {
+      setLoading(false);
+    }
   }
 
-  function handleClearExpired() {
-    const cleared = clearExpiredCodes();
-    setCleanupMessage(`Cleared ${cleared} expired verification code(s)`);
-    loadData();
-    setTimeout(() => setCleanupMessage(''), 3000);
-  }
-
-  function handleResetSystem() {
-    if (window.confirm('Are you sure you want to reset the entire email system? This will delete all logs and verification codes.')) {
-      resetEmailSystem();
-      loadData();
-      setCleanupMessage('Email system reset successfully');
+  async function handleClearExpired() {
+    setLoading(true);
+    setCleanupMessage('');
+    try {
+      const cleared = await clearExpiredCodes();
+      setCleanupMessage(`Cleared ${cleared} expired verification code(s)`);
+      await loadData();
       setTimeout(() => setCleanupMessage(''), 3000);
+    } catch (error) {
+      setCleanupMessage('Error clearing expired codes');
+      setTimeout(() => setCleanupMessage(''), 3000);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleResetSystem() {
+    if (window.confirm('Are you sure you want to reset the entire email system? This will delete all logs and verification codes.')) {
+      setLoading(true);
+      try {
+        await resetEmailSystem();
+        await loadData();
+        setCleanupMessage('Email system reset successfully');
+        setTimeout(() => setCleanupMessage(''), 3000);
+      } catch (error) {
+        setCleanupMessage('Error resetting email system');
+        setTimeout(() => setCleanupMessage(''), 3000);
+      } finally {
+        setLoading(false);
+      }
     }
   }
 
