@@ -9,8 +9,13 @@ import {
   Calendar,
   AlertCircle,
   Zap,
+  Toggle2,
+  CheckCircle,
+  XCircle,
+  Loader2,
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { toast } from 'sonner';
 
 const supabase = createClient(
   import.meta.env.VITE_SUPABASE_URL || '',
