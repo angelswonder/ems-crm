@@ -1,0 +1,320 @@
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import { createClient } from '@supabase/supabase-js';
+import type { User, AuthSession } from '@supabase/supabase-js';
+
+const supabase = createClient(
+  import.meta.env.VITE_SUPABASE_URL || '',
+  import.meta.env.VITE_SUPABASE_ANON_KEY || ''
+);
+
+export interface Tenant {
+  id: string;
+  name: string;
+  slug: string;
+  plan_type: 'free' | 'pro' | 'enterprise';
+  subscription_status: 'inactive' | 'trialing' | 'active' | 'past_due' | 'canceled';
+}
+
+export interface UserProfile {
+  id: string;
+  org_id: string;
+  full_name: string;
+  avatar_url?: string;
+  role: 'owner' | 'admin' | 'member' | 'viewer';
+  email: string;
+  theme_preference: 'light' | 'dark';
+  email_notifications: boolean;
+}
+
+interface AuthContextType {
+  user: User | null;
+  profile: UserProfile | null;
+  tenant: Tenant | null;
+  session: AuthSession | null;
+  loading: boolean;
+  
+  // Auth methods
+  signUp: (email: string, password: string, fullName: string) => Promise<void>;
+  signInWithPassword: (email: string, password: string) => Promise<void>;
+  signInWithMagicLink: (email: string) => Promise<void>;
+  signInWithOAuth: (provider: 'google' | 'github') => Promise<void>;
+  signOut: () => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
+  
+  // Organization
+  createOrganization: (name: string, slug: string) => Promise<Tenant>;
+  switchOrganization: (tenantId: string) => Promise<void>;
+  
+  // Profile
+  updateProfile: (updates: Partial<UserProfile>) => Promise<void>;
+}
+
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [user, setUser] = useState<User | null>(null);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [tenant, setTenant] = useState<Tenant | null>(null);
+  const [session, setSession] = useState<AuthSession | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  // Initialize auth state from Supabase
+  useEffect(() => {
+    const initializeAuth = async () => {
+      try {
+        // Get current session
+        const { data: { session } } = await supabase.auth.getSession();
+        setSession(session);
+        setUser(session?.user || null);
+
+        if (session?.user) {
+          // Fetch user profile and tenant
+          const { data: profileData, error: profileError } = await supabase
+            .from('profiles')
+            .select('*, organizations(*)')
+            .eq('id', session.user.id)
+            .single();
+
+          if (profileError) {
+            console.error('Error fetching profile:', profileError);
+          } else if (profileData) {
+            setProfile({
+              ...profileData,
+              email: session.user.email || '',
+            });
+            setTenant(profileData.organizations);
+          }
+        }
+      } catch (error) {
+        console.error('Auth initialization error:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    initializeAuth();
+
+    // Subscribe to auth changes
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, newSession) => {
+      setSession(newSession);
+      setUser(newSession?.user || null);
+
+      if (event === 'SIGNED_OUT') {
+        setProfile(null);
+        setTenant(null);
+      } else if (newSession?.user) {
+        // Refetch profile on auth change
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('*, organizations(*)')
+          .eq('id', newSession.user.id)
+          .single();
+
+        if (profileData) {
+          setProfile({
+            ...profileData,
+            email: newSession.user.email || '',
+          });
+          setTenant(profileData.organizations);
+        }
+      }
+    });
+
+    return () => subscription?.unsubscribe();
+  }, []);
+
+  const signUp = useCallback(async (email: string, password: string, fullName: string) => {
+    try {
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { full_name: fullName },
+        },
+      });
+
+      if (error) throw error;
+
+      // Note: User should verify email before full account is created
+    } catch (error) {
+      console.error('Sign up error:', error);
+      throw error;
+    }
+  }, []);
+
+  const signInWithPassword = useCallback(async (email: string, password: string) => {
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) throw error;
+    } catch (error) {
+      console.error('Sign in error:', error);
+      throw error;
+    }
+  }, []);
+
+  const signInWithMagicLink = useCallback(async (email: string) => {
+    try {
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+
+      if (error) throw error;
+    } catch (error) {
+      console.error('Magic link error:', error);
+      throw error;
+    }
+  }, []);
+
+  const signInWithOAuth = useCallback(async (provider: 'google' | 'github') => {
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+
+      if (error) throw error;
+    } catch (error) {
+      console.error('OAuth error:', error);
+      throw error;
+    }
+  }, []);
+
+  const signOut = useCallback(async () => {
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+    } catch (error) {
+      console.error('Sign out error:', error);
+      throw error;
+    }
+  }, []);
+
+  const resetPassword = useCallback(async (email: string) => {
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/auth/reset-password`,
+      });
+
+      if (error) throw error;
+    } catch (error) {
+      console.error('Password reset error:', error);
+      throw error;
+    }
+  }, []);
+
+  const createOrganization = useCallback(async (name: string, slug: string): Promise<Tenant> => {
+    if (!user) throw new Error('User not authenticated');
+
+    try {
+      // Create organization
+      const { data: org, error: orgError } = await supabase
+        .from('organizations')
+        .insert([{
+          name,
+          slug,
+          billing_email: user.email,
+        }])
+        .select()
+        .single();
+
+      if (orgError) throw orgError;
+
+      // Create profile linking user to org
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .insert([{
+          id: user.id,
+          org_id: org.id,
+          full_name: user.user_metadata?.full_name || '',
+          role: 'owner', // Creator is owner
+        }]);
+
+      if (profileError) throw profileError;
+
+      return org as Tenant;
+    } catch (error) {
+      console.error('Organization creation error:', error);
+      throw error;
+    }
+  }, [user]);
+
+  const switchOrganization = useCallback(async (tenantId: string) => {
+    try {
+      const { data: orgData, error } = await supabase
+        .from('organizations')
+        .select('*')
+        .eq('id', tenantId)
+        .single();
+
+      if (error) throw error;
+
+      setTenant(orgData as Tenant);
+      // Store in localStorage for quick access
+      localStorage.setItem('currentTenantId', tenantId);
+    } catch (error) {
+      console.error('Organization switch error:', error);
+      throw error;
+    }
+  }, []);
+
+  const updateProfile = useCallback(async (updates: Partial<UserProfile>) => {
+    if (!user) throw new Error('User not authenticated');
+
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update(updates)
+        .eq('id', user.id);
+
+      if (error) throw error;
+
+      // Update local state
+      setProfile(prev => prev ? { ...prev, ...updates } : null);
+    } catch (error) {
+      console.error('Profile update error:', error);
+      throw error;
+    }
+  }, [user]);
+
+  const value: AuthContextType = {
+    user,
+    profile,
+    tenant,
+    session,
+    loading,
+    signUp,
+    signInWithPassword,
+    signInWithMagicLink,
+    signInWithOAuth,
+    signOut,
+    resetPassword,
+    createOrganization,
+    switchOrganization,
+    updateProfile,
+  };
+
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+    </AuthContext.Provider>
+  );
+};
+
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within AuthProvider');
+  }
+  return context;
+};
