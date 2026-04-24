@@ -27,47 +27,82 @@ export const IndividualAuthPage: React.FC = () => {
     try {
       if (isSignUp) {
         // Sign up
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
             data: { 
               full_name: fullName,
-              user_type: 'individual' // Mark as individual user
+              user_type: 'individual'
             },
           },
         });
 
         if (error) throw error;
-        
-        // Create individual profile
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          await supabase
+
+        // For sign up, profile will be created after email confirmation
+        // Or immediately if no confirmation required
+        if (data.user) {
+          // Try to create profile immediately
+          const { error: profileError } = await supabase
             .from('profiles')
             .insert([{
-              id: user.id,
-              org_id: null, // No organization for individual
+              id: data.user.id,
+              org_id: null,
               full_name: fullName,
-              role: 'manager', // Default role for individual users
+              role: 'manager',
               email: email,
             }]);
+
+          if (profileError) {
+            console.warn('Profile creation failed (might be due to email confirmation):', profileError);
+          }
         }
 
         toast.success('Account created! Check your email to verify your account.');
+        setIsSignUp(false); // Switch to sign in mode
       } else {
         // Sign in
-        const { error } = await supabase.auth.signInWithPassword({
+        const { data, error } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
 
         if (error) throw error;
-        
+
+        // Ensure profile exists
+        if (data.user) {
+          const { data: existingProfile } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', data.user.id)
+            .single();
+
+          if (!existingProfile) {
+            // Create profile if not exists
+            const { error: profileError } = await supabase
+              .from('profiles')
+              .insert([{
+                id: data.user.id,
+                org_id: null,
+                full_name: data.user.user_metadata?.full_name || fullName || 'User',
+                role: 'manager',
+                email: email,
+              }]);
+
+            if (profileError) {
+              console.error('Profile creation error:', profileError);
+              toast.error('Failed to create profile');
+              return;
+            }
+          }
+        }
+
         toast.success('Logged in successfully!');
         navigate('/individual/dashboard');
       }
     } catch (error: any) {
+      console.error('Auth error:', error);
       toast.error(error.message || 'Authentication failed');
     } finally {
       setIsLoading(false);

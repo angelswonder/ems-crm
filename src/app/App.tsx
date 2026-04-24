@@ -4,6 +4,7 @@ import { LoginPage } from "./components/LoginPage";
 import { LandingPage } from "./components/LandingPage";
 import { IndividualAuthPage } from "./components/IndividualAuthPage";
 import { IndividualDashboard } from "./components/IndividualDashboard";
+import { AuthCallback } from "./components/AuthCallback";
 import { Layout } from "./components/Layout";
 
 function AppInner() {
@@ -17,6 +18,7 @@ function AppInner() {
         path="/auth/organization-login"
         element={currentUser ? <Navigate to="/app" replace /> : <LoginPage />}
       />
+      <Route path="/auth/callback" element={<AuthCallback />} />
       <Route path="/individual/dashboard" element={<IndividualDashboard />} />
       <Route
         path="/app/*"
