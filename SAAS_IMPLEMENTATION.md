@@ -176,25 +176,46 @@ Super admins have system-wide access to manage all organizations and users.
 1. **Initial Schema** (`supabase/migrations/001_initial_schema.sql`)
 2. **SaaS Schema** (`supabase/migrations/002_saas_schema.sql`)
 3. **Individual Users Support** (`supabase/migrations/003_individual_users.sql`)
+4. **Secure Admin Functions** (`supabase/migrations/004_secure_admin_functions.sql`)
 
-**Important**: Run migration 003 to enable individual user accounts:
+**Security Features in Migration 003:**
+- **Automatic Profile Creation**: Database trigger creates profiles securely on user signup
+- **Privilege Escalation Prevention**: Users cannot change their role or org_id
+- **No Client-Side Profile Creation**: Eliminates attack vectors from client applications
 
+**Security Features in Migration 004:**
+- **Secure Admin Promotion**: `promote_to_super_admin()` function with proper access controls
+- **Service Role Security**: Function runs with elevated privileges but checks caller permissions
+- **Audit Trail**: All admin actions are logged through existing audit system
+
+### Super Admin Creation (Secure Process)
+
+**⚠️ CRITICAL SECURITY**: Super admin creation requires database administrator access
+
+**Option 1: Direct SQL (Most Secure)**
+1. Create a regular user account through normal signup flow
+2. Run super admin promotion manually with service role access:
 ```sql
--- Allow org_id to be null for individual users
-ALTER TABLE profiles ALTER COLUMN org_id DROP NOT NULL;
-
--- Update RLS policies
-DROP POLICY IF EXISTS "Users can view profiles in their organization" ON profiles;
-CREATE POLICY "Users can view profiles in their organization or their own profile" ON profiles
-  FOR SELECT USING (
-    org_id = (SELECT org_id FROM profiles WHERE id = auth.uid())
-    OR id = auth.uid()
-    OR org_id IS NULL
-  );
-
-CREATE POLICY "Users can insert their own profile" ON profiles
-  FOR INSERT WITH CHECK (id = auth.uid());
+UPDATE profiles
+SET org_id = 'super-admin', role = 'owner'
+WHERE id = 'user-uuid-here';
 ```
+
+**Option 2: Secure Function (Recommended for Production)**
+Use the `promote_to_super_admin(user_uuid)` database function from an Edge Function:
+```typescript
+// In a secure Edge Function (server-side only)
+const { data, error } = await supabase.rpc('promote_to_super_admin', {
+  user_uuid: 'user-uuid-here'
+});
+```
+
+**Security Measures:**
+- No client-side API for privilege escalation
+- Requires direct database access or secure server-side function
+- Profiles created automatically and securely via database trigger
+- Users cannot modify their own role or org_id
+- All admin actions can be audited
 
 ### Environment Variables
 
@@ -216,15 +237,16 @@ VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
 
 If individual signup doesn't work:
 
-1. **Check Database Migration**: Ensure `003_individual_users.sql` has been run in Supabase
+1. **Check Database Migration**: Ensure `003_individual_users.sql` has been run (includes security trigger)
 2. **Check Console Logs**: Open browser dev tools and check for errors during signup
 3. **Email Confirmation**: Supabase may require email verification before login
-4. **RLS Policies**: The profile insert may fail if RLS policies block it
+4. **Profile Creation**: Profiles are created automatically by database trigger, not client-side
 
-**Common Issues:**
-- Profile creation fails → Run the migration to allow null org_id
-- No error messages → Check browser console for detailed errors
-- OAuth not working → Ensure redirect URLs are configured in Supabase
+**Security Notes:**
+- Profile creation happens server-side via database trigger
+- Users cannot escalate privileges or create arbitrary profiles
+- Super admin creation requires manual database intervention
+- All profile updates are restricted to prevent privilege escalation
 
 ### Individual User Flow
 

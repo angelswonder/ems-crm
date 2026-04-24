@@ -59,41 +59,24 @@ export const IndividualAuthPage: React.FC = () => {
 
         console.log('Signin successful:', data);
 
-        // Ensure profile exists after successful sign in
+        // Profile is created automatically by database trigger on signup
+        // Just verify it exists
         if (data.user) {
-          console.log('Checking for existing profile...');
+          console.log('Checking profile...');
           const { data: existingProfile, error: fetchError } = await supabase
             .from('profiles')
             .select('*')
             .eq('id', data.user.id)
             .single();
 
-          if (fetchError && fetchError.code !== 'PGRST116') { // PGRST116 is "not found"
+          if (fetchError) {
             console.error('Profile fetch error:', fetchError);
-            throw fetchError;
+            // Profile should have been created by trigger, but if not, this is an error
+            toast.error('Profile not found. Please contact support.');
+            return;
           }
 
-          if (!existingProfile) {
-            console.log('Creating profile...');
-            const { error: profileError } = await supabase
-              .from('profiles')
-              .insert([{
-                id: data.user.id,
-                org_id: null,
-                full_name: data.user.user_metadata?.full_name || fullName || 'User',
-                role: 'manager',
-                email: email,
-              }]);
-
-            if (profileError) {
-              console.error('Profile creation error:', profileError);
-              toast.error('Failed to create profile: ' + profileError.message);
-              return;
-            }
-            console.log('Profile created successfully');
-          } else {
-            console.log('Profile already exists');
-          }
+          console.log('Profile verified:', existingProfile);
         }
 
         toast.success('Logged in successfully!');

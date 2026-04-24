@@ -21,7 +21,8 @@ export const AuthCallback: React.FC = () => {
           const user = data.session.user;
           const userType = new URLSearchParams(window.location.search).get('user_type');
 
-          // Check if profile exists, create if not
+          // Profile is created automatically by database trigger
+          // Just verify it exists and navigate accordingly
           const { data: existingProfile } = await supabase
             .from('profiles')
             .select('*')
@@ -29,28 +30,13 @@ export const AuthCallback: React.FC = () => {
             .single();
 
           if (!existingProfile) {
-            // Create profile based on user type
-            const profileData = {
-              id: user.id,
-              full_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
-              email: user.email || '',
-              role: userType === 'individual' ? 'manager' : 'owner',
-              org_id: userType === 'individual' ? null : null, // For org, will be set later
-            };
-
-            const { error: profileError } = await supabase
-              .from('profiles')
-              .insert([profileData]);
-
-            if (profileError) {
-              console.error('Profile creation error:', profileError);
-              toast.error('Failed to create profile');
-              return;
-            }
+            console.error('Profile not found after OAuth');
+            toast.error('Profile creation failed. Please contact support.');
+            return;
           }
 
           // Navigate based on user type
-          if (userType === 'individual') {
+          if (userType === 'individual' || existingProfile.org_id === null) {
             navigate('/individual/dashboard');
           } else {
             navigate('/app');

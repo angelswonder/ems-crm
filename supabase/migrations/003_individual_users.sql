@@ -4,6 +4,36 @@
 -- Allow org_id to be null for individual users
 ALTER TABLE profiles ALTER COLUMN org_id DROP NOT NULL;
 
+-- Create a function to safely create user profiles
+CREATE OR REPLACE FUNCTION create_user_profile()
+RETURNS TRIGGER AS $$
+BEGIN
+  -- Only create profile if it doesn't exist
+  INSERT INTO profiles (id, org_id, full_name, role, email)
+  VALUES (
+    NEW.id,
+    CASE
+      WHEN NEW.raw_user_meta_data->>'user_type' = 'individual' THEN NULL
+      ELSE NULL  -- Default to individual, org creation happens separately
+    END,
+    COALESCE(NEW.raw_user_meta_data->>'full_name', split_part(NEW.email, '@', 1), 'User'),
+    CASE
+      WHEN NEW.raw_user_meta_data->>'user_type' = 'individual' THEN 'manager'
+      ELSE 'owner'  -- Default role for org users
+    END,
+    NEW.email
+  )
+  ON CONFLICT (id) DO NOTHING;
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Create trigger to automatically create profiles on user signup
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION create_user_profile();
+
 -- Update RLS policies to handle individual users (org_id = null)
 DROP POLICY IF EXISTS "Users can view profiles in their organization" ON profiles;
 CREATE POLICY "Users can view profiles in their organization or their own profile" ON profiles
@@ -14,12 +44,17 @@ CREATE POLICY "Users can view profiles in their organization or their own profil
   );
 
 DROP POLICY IF EXISTS "Users can update their own profile" ON profiles;
-CREATE POLICY "Users can update their own profile" ON profiles
-  FOR UPDATE USING (id = auth.uid());
+CREATE POLICY "Users can update their own profile (limited fields)" ON profiles
+  FOR UPDATE USING (id = auth.uid())
+  WITH CHECK (
+    id = auth.uid() AND
+    -- Prevent privilege escalation - users cannot change role or org_id
+    org_id IS NOT DISTINCT FROM (SELECT org_id FROM profiles WHERE id = auth.uid()) AND
+    role IS NOT DISTINCT FROM (SELECT role FROM profiles WHERE id = auth.uid())
+  );
 
--- Allow authenticated users to insert their own profile
-CREATE POLICY "Users can insert their own profile" ON profiles
-  FOR INSERT WITH CHECK (id = auth.uid());
+-- Remove the insert policy - profiles are created automatically by trigger
+DROP POLICY IF EXISTS "Users can insert their own profile" ON profiles;
 
 -- Update existing tables to allow null org_id
 ALTER TABLE leads ALTER COLUMN org_id DROP NOT NULL;
