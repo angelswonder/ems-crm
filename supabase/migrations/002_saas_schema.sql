@@ -170,36 +170,76 @@ CREATE INDEX idx_audit_created ON audit_logs(created_at DESC);
 -- ============================================================================
 
 -- Leads
-ALTER TABLE IF EXISTS leads ADD COLUMN org_id uuid REFERENCES organizations(id) ON DELETE CASCADE;
-CREATE INDEX idx_leads_org ON leads(org_id) WHERE org_id IS NOT NULL;
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'leads') THEN
+    ALTER TABLE IF EXISTS leads ADD COLUMN org_id uuid REFERENCES organizations(id) ON DELETE CASCADE;
+    CREATE INDEX IF NOT EXISTS idx_leads_org ON leads(org_id) WHERE org_id IS NOT NULL;
+  END IF;
+END$$;
 
 -- Accounts
-ALTER TABLE IF EXISTS accounts ADD COLUMN org_id uuid REFERENCES organizations(id) ON DELETE CASCADE;
-CREATE INDEX idx_accounts_org ON accounts(org_id) WHERE org_id IS NOT NULL;
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'accounts') THEN
+    ALTER TABLE IF EXISTS accounts ADD COLUMN org_id uuid REFERENCES organizations(id) ON DELETE CASCADE;
+    CREATE INDEX IF NOT EXISTS idx_accounts_org ON accounts(org_id) WHERE org_id IS NOT NULL;
+  END IF;
+END$$;
 
 -- Contacts
-ALTER TABLE IF EXISTS contacts ADD COLUMN org_id uuid REFERENCES organizations(id) ON DELETE CASCADE;
-CREATE INDEX idx_contacts_org ON contacts(org_id) WHERE org_id IS NOT NULL;
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'contacts') THEN
+    ALTER TABLE IF EXISTS contacts ADD COLUMN org_id uuid REFERENCES organizations(id) ON DELETE CASCADE;
+    CREATE INDEX IF NOT EXISTS idx_contacts_org ON contacts(org_id) WHERE org_id IS NOT NULL;
+  END IF;
+END$$;
 
 -- Tasks
-ALTER TABLE IF EXISTS tasks ADD COLUMN org_id uuid REFERENCES organizations(id) ON DELETE CASCADE;
-CREATE INDEX idx_tasks_org ON tasks(org_id) WHERE org_id IS NOT NULL;
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'tasks') THEN
+    ALTER TABLE IF EXISTS tasks ADD COLUMN org_id uuid REFERENCES organizations(id) ON DELETE CASCADE;
+    CREATE INDEX IF NOT EXISTS idx_tasks_org ON tasks(org_id) WHERE org_id IS NOT NULL;
+  END IF;
+END$$;
 
 -- Cases
-ALTER TABLE IF EXISTS cases ADD COLUMN org_id uuid REFERENCES organizations(id) ON DELETE CASCADE;
-CREATE INDEX idx_cases_org ON cases(org_id) WHERE org_id IS NOT NULL;
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'cases') THEN
+    ALTER TABLE IF EXISTS cases ADD COLUMN org_id uuid REFERENCES organizations(id) ON DELETE CASCADE;
+    CREATE INDEX IF NOT EXISTS idx_cases_org ON cases(org_id) WHERE org_id IS NOT NULL;
+  END IF;
+END$$;
 
 -- Opportunities
-ALTER TABLE IF EXISTS opportunities ADD COLUMN org_id uuid REFERENCES organizations(id) ON DELETE CASCADE;
-CREATE INDEX idx_opportunities_org ON opportunities(org_id) WHERE org_id IS NOT NULL;
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'opportunities') THEN
+    ALTER TABLE IF EXISTS opportunities ADD COLUMN org_id uuid REFERENCES organizations(id) ON DELETE CASCADE;
+    CREATE INDEX IF NOT EXISTS idx_opportunities_org ON opportunities(org_id) WHERE org_id IS NOT NULL;
+  END IF;
+END$$;
 
 -- Campaigns
-ALTER TABLE IF EXISTS campaigns ADD COLUMN org_id uuid REFERENCES organizations(id) ON DELETE CASCADE;
-CREATE INDEX idx_campaigns_org ON campaigns(org_id) WHERE org_id IS NOT NULL;
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'campaigns') THEN
+    ALTER TABLE IF EXISTS campaigns ADD COLUMN org_id uuid REFERENCES organizations(id) ON DELETE CASCADE;
+    CREATE INDEX IF NOT EXISTS idx_campaigns_org ON campaigns(org_id) WHERE org_id IS NOT NULL;
+  END IF;
+END$$;
 
 -- Energy Logs / Monitoring Data
-ALTER TABLE IF EXISTS energy_logs ADD COLUMN org_id uuid REFERENCES organizations(id) ON DELETE CASCADE;
-CREATE INDEX idx_energy_logs_org ON energy_logs(org_id) WHERE org_id IS NOT NULL;
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'energy_logs') THEN
+    ALTER TABLE IF EXISTS energy_logs ADD COLUMN org_id uuid REFERENCES organizations(id) ON DELETE CASCADE;
+    CREATE INDEX IF NOT EXISTS idx_energy_logs_org ON energy_logs(org_id) WHERE org_id IS NOT NULL;
+  END IF;
+END$$;
 
 -- ============================================================================
 -- 7. UPDATE TIMESTAMP TRIGGERS
@@ -312,77 +352,112 @@ CREATE POLICY "Service role can insert audit logs" ON audit_logs
 -- ============================================================================
 
 -- Leads
-ALTER TABLE leads ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Users can view leads in their org" ON leads
-  FOR SELECT USING (
-    org_id = (SELECT org_id FROM profiles WHERE id = auth.uid())
-  );
-CREATE POLICY "Users can insert leads for their org" ON leads
-  FOR INSERT WITH CHECK (
-    org_id = (SELECT org_id FROM profiles WHERE id = auth.uid())
-  );
-CREATE POLICY "Users can update leads in their org" ON leads
-  FOR UPDATE USING (
-    org_id = (SELECT org_id FROM profiles WHERE id = auth.uid())
-  );
-CREATE POLICY "Users can delete leads in their org" ON leads
-  FOR DELETE USING (
-    org_id = (SELECT org_id FROM profiles WHERE id = auth.uid())
-  );
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'leads') THEN
+    ALTER TABLE leads ENABLE ROW LEVEL SECURITY;
+    CREATE POLICY "Users can view leads in their org" ON leads
+      FOR SELECT USING (
+        org_id = (SELECT org_id FROM profiles WHERE id = auth.uid())
+      );
+    CREATE POLICY "Users can insert leads for their org" ON leads
+      FOR INSERT WITH CHECK (
+        org_id = (SELECT org_id FROM profiles WHERE id = auth.uid())
+      );
+    CREATE POLICY "Users can update leads in their org" ON leads
+      FOR UPDATE USING (
+        org_id = (SELECT org_id FROM profiles WHERE id = auth.uid())
+      );
+    CREATE POLICY "Users can delete leads in their org" ON leads
+      FOR DELETE USING (
+        org_id = (SELECT org_id FROM profiles WHERE id = auth.uid())
+      );
+  END IF;
+END$$;
 
 -- Accounts (same pattern)
-ALTER TABLE accounts ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Users can view accounts in their org" ON accounts
-  FOR SELECT USING (org_id = (SELECT org_id FROM profiles WHERE id = auth.uid()));
-CREATE POLICY "Users can modify accounts in their org" ON accounts
-  FOR INSERT WITH CHECK (org_id = (SELECT org_id FROM profiles WHERE id = auth.uid()));
-CREATE POLICY "Users can update accounts in their org" ON accounts
-  FOR UPDATE USING (org_id = (SELECT org_id FROM profiles WHERE id = auth.uid()));
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'accounts') THEN
+    ALTER TABLE accounts ENABLE ROW LEVEL SECURITY;
+    CREATE POLICY "Users can view accounts in their org" ON accounts
+      FOR SELECT USING (org_id = (SELECT org_id FROM profiles WHERE id = auth.uid()));
+    CREATE POLICY "Users can modify accounts in their org" ON accounts
+      FOR INSERT WITH CHECK (org_id = (SELECT org_id FROM profiles WHERE id = auth.uid()));
+    CREATE POLICY "Users can update accounts in their org" ON accounts
+      FOR UPDATE USING (org_id = (SELECT org_id FROM profiles WHERE id = auth.uid()));
+  END IF;
+END$$;
 
 -- Contacts
-ALTER TABLE contacts ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Users can view contacts in their org" ON contacts
-  FOR SELECT USING (org_id = (SELECT org_id FROM profiles WHERE id = auth.uid()));
-CREATE POLICY "Users can manage contacts in their org" ON contacts
-  FOR INSERT WITH CHECK (org_id = (SELECT org_id FROM profiles WHERE id = auth.uid()));
-CREATE POLICY "Users can update contacts in their org" ON contacts
-  FOR UPDATE USING (org_id = (SELECT org_id FROM profiles WHERE id = auth.uid()));
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'contacts') THEN
+    ALTER TABLE contacts ENABLE ROW LEVEL SECURITY;
+    CREATE POLICY "Users can view contacts in their org" ON contacts
+      FOR SELECT USING (org_id = (SELECT org_id FROM profiles WHERE id = auth.uid()));
+    CREATE POLICY "Users can manage contacts in their org" ON contacts
+      FOR INSERT WITH CHECK (org_id = (SELECT org_id FROM profiles WHERE id = auth.uid()));
+    CREATE POLICY "Users can update contacts in their org" ON contacts
+      FOR UPDATE USING (org_id = (SELECT org_id FROM profiles WHERE id = auth.uid()));
+  END IF;
+END$$;
 
 -- Tasks
-ALTER TABLE tasks ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Users can view tasks in their org" ON tasks
-  FOR SELECT USING (org_id = (SELECT org_id FROM profiles WHERE id = auth.uid()));
-CREATE POLICY "Users can manage tasks in their org" ON tasks
-  FOR INSERT WITH CHECK (org_id = (SELECT org_id FROM profiles WHERE id = auth.uid()));
-CREATE POLICY "Users can update tasks in their org" ON tasks
-  FOR UPDATE USING (org_id = (SELECT org_id FROM profiles WHERE id = auth.uid()));
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'tasks') THEN
+    ALTER TABLE tasks ENABLE ROW LEVEL SECURITY;
+    CREATE POLICY "Users can view tasks in their org" ON tasks
+      FOR SELECT USING (org_id = (SELECT org_id FROM profiles WHERE id = auth.uid()));
+    CREATE POLICY "Users can manage tasks in their org" ON tasks
+      FOR INSERT WITH CHECK (org_id = (SELECT org_id FROM profiles WHERE id = auth.uid()));
+    CREATE POLICY "Users can update tasks in their org" ON tasks
+      FOR UPDATE USING (org_id = (SELECT org_id FROM profiles WHERE id = auth.uid()));
+  END IF;
+END$$;
 
 -- Cases
-ALTER TABLE cases ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Users can view cases in their org" ON cases
-  FOR SELECT USING (org_id = (SELECT org_id FROM profiles WHERE id = auth.uid()));
-CREATE POLICY "Users can manage cases in their org" ON cases
-  FOR INSERT WITH CHECK (org_id = (SELECT org_id FROM profiles WHERE id = auth.uid()));
-CREATE POLICY "Users can update cases in their org" ON cases
-  FOR UPDATE USING (org_id = (SELECT org_id FROM profiles WHERE id = auth.uid()));
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'cases') THEN
+    ALTER TABLE cases ENABLE ROW LEVEL SECURITY;
+    CREATE POLICY "Users can view cases in their org" ON cases
+      FOR SELECT USING (org_id = (SELECT org_id FROM profiles WHERE id = auth.uid()));
+    CREATE POLICY "Users can manage cases in their org" ON cases
+      FOR INSERT WITH CHECK (org_id = (SELECT org_id FROM profiles WHERE id = auth.uid()));
+    CREATE POLICY "Users can update cases in their org" ON cases
+      FOR UPDATE USING (org_id = (SELECT org_id FROM profiles WHERE id = auth.uid()));
+  END IF;
+END$$;
 
 -- Opportunities
-ALTER TABLE opportunities ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Users can view opportunities in their org" ON opportunities
-  FOR SELECT USING (org_id = (SELECT org_id FROM profiles WHERE id = auth.uid()));
-CREATE POLICY "Users can manage opportunities in their org" ON opportunities
-  FOR INSERT WITH CHECK (org_id = (SELECT org_id FROM profiles WHERE id = auth.uid()));
-CREATE POLICY "Users can update opportunities in their org" ON opportunities
-  FOR UPDATE USING (org_id = (SELECT org_id FROM profiles WHERE id = auth.uid()));
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'opportunities') THEN
+    ALTER TABLE opportunities ENABLE ROW LEVEL SECURITY;
+    CREATE POLICY "Users can view opportunities in their org" ON opportunities
+      FOR SELECT USING (org_id = (SELECT org_id FROM profiles WHERE id = auth.uid()));
+    CREATE POLICY "Users can manage opportunities in their org" ON opportunities
+      FOR INSERT WITH CHECK (org_id = (SELECT org_id FROM profiles WHERE id = auth.uid()));
+    CREATE POLICY "Users can update opportunities in their org" ON opportunities
+      FOR UPDATE USING (org_id = (SELECT org_id FROM profiles WHERE id = auth.uid()));
+  END IF;
+END$$;
 
 -- Campaigns
-ALTER TABLE campaigns ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Users can view campaigns in their org" ON campaigns
-  FOR SELECT USING (org_id = (SELECT org_id FROM profiles WHERE id = auth.uid()));
-CREATE POLICY "Users can manage campaigns in their org" ON campaigns
-  FOR INSERT WITH CHECK (org_id = (SELECT org_id FROM profiles WHERE id = auth.uid()));
-CREATE POLICY "Users can update campaigns in their org" ON campaigns
-  FOR UPDATE USING (org_id = (SELECT org_id FROM profiles WHERE id = auth.uid()));
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'campaigns') THEN
+    ALTER TABLE campaigns ENABLE ROW LEVEL SECURITY;
+    CREATE POLICY "Users can view campaigns in their org" ON campaigns
+      FOR SELECT USING (org_id = (SELECT org_id FROM profiles WHERE id = auth.uid()));
+    CREATE POLICY "Users can manage campaigns in their org" ON campaigns
+      FOR INSERT WITH CHECK (org_id = (SELECT org_id FROM profiles WHERE id = auth.uid()));
+    CREATE POLICY "Users can update campaigns in their org" ON campaigns
+      FOR UPDATE USING (org_id = (SELECT org_id FROM profiles WHERE id = auth.uid()));
+  END IF;
+END$$;
 
 -- ============================================================================
 -- NOTES:

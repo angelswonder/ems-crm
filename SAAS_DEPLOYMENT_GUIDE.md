@@ -31,6 +31,9 @@ This guide walks through implementing the complete multi-tenant SaaS platform wi
    - `subscriptions`
    - `audit_logs`
 
+> Note: `002_saas_schema.sql` also contains optional updates for existing CRM tables such as `leads`, `accounts`, `contacts`, `tasks`, `cases`, `opportunities`, `campaigns`, and `energy_logs`.
+> If those tables are not present in your project, the migration will safely skip those sections.
+
 ### 1.2 Migrate Existing Data
 
 For existing CRM records, you need to link them to an organization:
