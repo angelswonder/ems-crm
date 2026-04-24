@@ -38,6 +38,8 @@ This guide walks through implementing the complete multi-tenant SaaS platform wi
 
 ### 1.2 Migrate Existing Data
 
+**Only run this if you have existing CRM data from a previous version.**
+
 For existing CRM records, you need to link them to an organization:
 
 ```sql
@@ -57,7 +59,35 @@ INSERT INTO profiles (id, org_id, full_name, role)
 VALUES ('YOUR_USER_ID', 'YOUR_ORG_ID', 'Admin User', 'owner');
 ```
 
-### 1.3 Test RLS Policies
+> **Important**: If you get "relation does not exist" errors, it means you don't have existing CRM tables yet. For a fresh SaaS setup, skip the UPDATE statements and only run the organization creation and admin profile insertion.
+
+### 1.2.1 Fresh SaaS Setup (No Existing Data)
+
+If you're starting fresh without existing CRM data:
+
+```sql
+-- Just create the organization
+INSERT INTO organizations (name, slug, billing_email) 
+VALUES ('Your Company', 'your-company', 'admin@yourcompany.com')
+RETURNING id;
+
+-- Create admin profile (replace YOUR_USER_ID with actual user ID)
+INSERT INTO profiles (id, org_id, full_name, role)
+VALUES ('YOUR_USER_ID', 'YOUR_ORG_ID', 'Admin User', 'owner');
+```
+
+### 1.3 Create Admin User Account
+
+**Before creating the admin profile, the admin user must sign up first:**
+
+1. Go to your app's signup page
+2. Have the admin create an account with email/password
+3. Copy their user ID from the `auth.users` table in Supabase
+4. Use that ID in the `profiles` insert above
+
+The admin will login using the email/password they signed up with - passwords are stored in Supabase Auth, not in the profiles table.
+
+### 1.4 Test RLS Policies
 
 Login with a different user and verify they can't see other organizations' data.
 
