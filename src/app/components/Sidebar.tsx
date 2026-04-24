@@ -21,6 +21,7 @@ import {
   Mail,
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
+import { SectionId } from "../contexts/AppContext";
 
 interface SidebarProps {
   currentPage: string;
@@ -78,19 +79,6 @@ export function Sidebar({ currentPage, onPageChange }: SidebarProps) {
     signOut();
   };
 
-  const handleMouseEnter = () => {
-    if (hoverTimeout.current) clearTimeout(hoverTimeout.current);
-    setIsExpanded(true);
-  };
-  const handleMouseLeave = () => {
-    hoverTimeout.current = setTimeout(() => setIsExpanded(false), 200);
-  };
-
-  const handleLogout = () => {
-    setIsExpanded(false);
-    logout();
-  };
-
   const validateForm = () => {
     const e: Record<string, string> = {};
     if (!form.name.trim()) e.name = "Required";
@@ -112,15 +100,6 @@ export function Sidebar({ currentPage, onPageChange }: SidebarProps) {
       setErrors({});
     }, 1500);
   };
-      isCustom: true,
-    });
-    setForm({ name: "", address: "", lat: "", lng: "", status: "active" });
-    setErrors({});
-    setAddSuccess(true);
-    setTimeout(() => { setAddSuccess(false); setShowAddModal(false); }, 1800);
-  };
-
-  const gradientClass = ROLE_GRADIENT[currentUser?.role ?? "admin"];
 
   return (
     <>
