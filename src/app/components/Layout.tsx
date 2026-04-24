@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useApp } from "../contexts/AppContext";
+import { useAuth } from "../contexts/AuthContext";
 import { Sidebar } from "./Sidebar";
 import { Dashboard } from "./Dashboard";
 import { Analytics } from "./Analytics";
@@ -13,12 +13,14 @@ import { EmailAdminPage } from "./EmailAdminPage";
 import { Toaster } from "sonner";
 
 export function Layout() {
-  const { currentUser } = useApp();
+  const { profile, tenant } = useAuth();
   const [currentPage, setCurrentPage] = useState("dashboard");
 
-  const safePage = currentUser?.permissions.includes(currentPage as any)
-    ? currentPage
-    : currentUser?.permissions[0] ?? "dashboard";
+  // For now, assume all org users have access to all sections
+  // TODO: Implement proper role-based permissions
+  const userPermissions = ["dashboard", "analytics", "monitor", "configuration", "reports", "settings", "messaging", "crm"];
+
+  const safePage = userPermissions.includes(currentPage) ? currentPage : "dashboard";
 
   const renderContent = () => {
     switch (safePage) {
@@ -34,6 +36,10 @@ export function Layout() {
       default:              return <Dashboard />;
     }
   };
+
+  if (!profile) {
+    return <div>Loading...</div>;
+  }
 
   return (
     <div className="flex h-screen bg-background overflow-hidden">

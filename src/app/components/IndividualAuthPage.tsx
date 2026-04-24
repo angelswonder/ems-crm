@@ -9,7 +9,7 @@ import { toast } from 'sonner';
 
 export const IndividualAuthPage: React.FC = () => {
   const navigate = useNavigate();
-  const { signInWithPassword, signInWithOAuth } = useAuth();
+  const { signUp, signInWithPassword, signInWithOAuth } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -23,62 +23,17 @@ export const IndividualAuthPage: React.FC = () => {
 
     try {
       if (isSignUp) {
-        // Sign up - only create auth user, profile will be created on first sign in
+        // Sign up - create auth user with individual metadata
         console.log('Attempting signup...');
-        const { data, error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            data: {
-              full_name: fullName,
-              user_type: 'individual'
-            },
-          },
-        });
-
-        if (error) {
-          console.error('Signup error:', error);
-          throw error;
-        }
-
-        console.log('Signup successful:', data);
+        await signUp(email, password, fullName);
+        console.log('Signup successful');
         toast.success('Account created! Check your email to verify your account.');
         setIsSignUp(false); // Switch to sign in mode
       } else {
         // Sign in
         console.log('Attempting signin...');
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-
-        if (error) {
-          console.error('Signin error:', error);
-          throw error;
-        }
-
-        console.log('Signin successful:', data);
-
-        // Profile is created automatically by database trigger on signup
-        // Just verify it exists
-        if (data.user) {
-          console.log('Checking profile...');
-          const { data: existingProfile, error: fetchError } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', data.user.id)
-            .single();
-
-          if (fetchError) {
-            console.error('Profile fetch error:', fetchError);
-            // Profile should have been created by trigger, but if not, this is an error
-            toast.error('Profile not found. Please contact support.');
-            return;
-          }
-
-          console.log('Profile verified:', existingProfile);
-        }
-
+        await signInWithPassword(email, password);
+        console.log('Signin successful');
         toast.success('Logged in successfully!');
         navigate('/individual/dashboard');
       }
@@ -93,15 +48,7 @@ export const IndividualAuthPage: React.FC = () => {
   const handleOAuth = async (provider: 'google' | 'github') => {
     setIsLoading(true);
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider,
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback?user_type=individual`,
-          scopes: provider === 'github' ? 'user:email' : undefined,
-        },
-      });
-
-      if (error) throw error;
+      await signInWithOAuth(provider);
     } catch (error: any) {
       toast.error(error.message || 'OAuth login failed');
       setIsLoading(false);

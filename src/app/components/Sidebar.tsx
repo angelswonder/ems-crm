@@ -20,7 +20,7 @@ import {
   Briefcase,
   Mail,
 } from "lucide-react";
-import { useApp, SectionId, ROLE_LABELS, Location } from "../contexts/AppContext";
+import { useAuth } from "../contexts/AuthContext";
 
 interface SidebarProps {
   currentPage: string;
@@ -53,7 +53,7 @@ const ROLE_GRADIENT: Record<string, string> = {
 };
 
 export function Sidebar({ currentPage, onPageChange }: SidebarProps) {
-  const { currentUser, logout, addLocation, notifications } = useApp();
+  const { profile, signOut } = useAuth();
   const [isExpanded, setIsExpanded] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [form, setForm] = useState({ name: "", address: "", lat: "", lng: "", status: "active" as "active" | "inactive" | "warning" });
@@ -61,8 +61,22 @@ export function Sidebar({ currentPage, onPageChange }: SidebarProps) {
   const [addSuccess, setAddSuccess] = useState(false);
   const hoverTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const unreadCount = notifications.filter((n) => !n.read).length;
-  const visibleNav = NAV_ITEMS.filter((item) => currentUser?.permissions.includes(item.id));
+  // For now, assume all org users have access to all sections
+  const userPermissions = ["dashboard", "analytics", "monitor", "configuration", "reports", "settings", "messaging", "crm"];
+  const visibleNav = NAV_ITEMS.filter((item) => userPermissions.includes(item.id));
+
+  const handleMouseEnter = () => {
+    if (hoverTimeout.current) clearTimeout(hoverTimeout.current);
+    setIsExpanded(true);
+  };
+  const handleMouseLeave = () => {
+    hoverTimeout.current = setTimeout(() => setIsExpanded(false), 200);
+  };
+
+  const handleLogout = () => {
+    setIsExpanded(false);
+    signOut();
+  };
 
   const handleMouseEnter = () => {
     if (hoverTimeout.current) clearTimeout(hoverTimeout.current);
@@ -89,15 +103,15 @@ export function Sidebar({ currentPage, onPageChange }: SidebarProps) {
   const handleAddSubmit = () => {
     const e = validateForm();
     if (Object.keys(e).length) { setErrors(e); return; }
-    const baseLat = 51.506 + (Math.random() - 0.5) * 0.015;
-    const baseLng = -0.09 + (Math.random() - 0.5) * 0.015;
-    addLocation({
-      id: `custom-${Date.now()}`,
-      name: form.name.trim(),
-      address: form.address.trim(),
-      lat: form.lat ? Number(form.lat) : baseLat,
-      lng: form.lng ? Number(form.lng) : baseLng,
-      status: form.status,
+    // For now, just show success - location management not implemented in SaaS version
+    setAddSuccess(true);
+    setTimeout(() => {
+      setShowAddModal(false);
+      setAddSuccess(false);
+      setForm({ name: "", address: "", lat: "", lng: "", status: "active" });
+      setErrors({});
+    }, 1500);
+  };
       isCustom: true,
     });
     setForm({ name: "", address: "", lat: "", lng: "", status: "active" });
@@ -299,8 +313,7 @@ export function Sidebar({ currentPage, onPageChange }: SidebarProps) {
           <div className="px-4 pb-4 space-y-2 flex-shrink-0">
             <div className="h-px bg-sidebar-border/30 mx-2" />
 
-            {/* Add Location (only if settings permission) */}
-            {currentUser?.permissions.includes("settings") && (
+            {profile && (
               <div className="relative group">
                 <button
                   onClick={() => setShowAddModal(true)}

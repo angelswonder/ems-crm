@@ -1,9 +1,9 @@
 import { useState } from "react";
-import { useApp } from "../contexts/AppContext";
+import { useAuth } from "../contexts/AuthContext";
 import { Zap, Mail, Lock, Eye, EyeOff, AlertCircle } from "lucide-react";
 
 export function LoginPage() {
-  const { login } = useApp();
+  const { signInWithPassword } = useAuth();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -14,10 +14,14 @@ export function LoginPage() {
     e.preventDefault();
     setError("");
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 700));
-    const ok = login(username.trim(), password);
-    if (!ok) setError("Invalid email or password. Please check your credentials.");
-    setLoading(false);
+
+    try {
+      await signInWithPassword(username.trim(), password);
+    } catch (error: any) {
+      setError(error.message || "Invalid email or password. Please check your credentials.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
