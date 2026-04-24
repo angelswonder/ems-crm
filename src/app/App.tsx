@@ -3,6 +3,7 @@ import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { LoginPage } from "./components/LoginPage";
 import { LandingPage } from "./components/LandingPage";
 import { IndividualAuthPage } from "./components/IndividualAuthPage";
+import { OrganizationSignupPage } from "./components/OrganizationSignupPage";
 import { IndividualDashboard } from "./components/IndividualDashboard";
 import { AuthCallback } from "./components/AuthCallback";
 import { Layout } from "./components/Layout";
@@ -14,6 +15,7 @@ function AppInner() {
     <Routes>
       <Route path="/" element={user ? <Navigate to="/app" replace /> : <LandingPage />} />
       <Route path="/auth/individual-login" element={<IndividualAuthPage />} />
+      <Route path="/auth/organization-signup" element={<OrganizationSignupPage />} />
       <Route
         path="/auth/organization-login"
         element={user ? <Navigate to="/app" replace /> : <LoginPage />}

@@ -193,7 +193,7 @@ export const LandingPage: React.FC = () => {
               </div>
 
               <Button
-                onClick={() => navigate('/auth/organization-login')}
+                onClick={() => navigate('/auth/organization-signup')}
                 className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white group/btn flex items-center justify-center gap-2 transition-all"
               >
                 Get Started
