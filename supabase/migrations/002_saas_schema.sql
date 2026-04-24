@@ -255,18 +255,22 @@ END;
 $$ language 'plpgsql';
 
 -- Apply to organizations
+DROP TRIGGER IF EXISTS update_organizations_updated_at ON organizations;
 CREATE TRIGGER update_organizations_updated_at BEFORE UPDATE ON organizations
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- Apply to profiles
+DROP TRIGGER IF EXISTS update_profiles_updated_at ON profiles;
 CREATE TRIGGER update_profiles_updated_at BEFORE UPDATE ON profiles
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- Apply to invitations
+DROP TRIGGER IF EXISTS update_invitations_updated_at ON invitations;
 CREATE TRIGGER update_invitations_updated_at BEFORE UPDATE ON invitations
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- Apply to subscriptions
+DROP TRIGGER IF EXISTS update_subscriptions_updated_at ON subscriptions;
 CREATE TRIGGER update_subscriptions_updated_at BEFORE UPDATE ON subscriptions
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
