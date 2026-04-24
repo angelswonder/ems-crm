@@ -17,10 +17,10 @@ export interface Tenant {
 
 export interface UserProfile {
   id: string;
-  org_id: string;
+  org_id: string | null; // Allow null for individual users
   full_name: string;
   avatar_url?: string;
-  role: 'owner' | 'admin' | 'member' | 'viewer';
+  role: 'owner' | 'admin' | 'member' | 'viewer' | 'manager'; // Add manager for individuals
   email: string;
   theme_preference: 'light' | 'dark';
   email_notifications: boolean;
@@ -68,7 +68,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(session?.user || null);
 
         if (session?.user) {
-          // Fetch user profile and tenant
+          // Fetch user profile and tenant (tenant is null for individual users)
           const { data: profileData, error: profileError } = await supabase
             .from('profiles')
             .select('*, organizations(*)')
@@ -77,12 +77,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
           if (profileError) {
             console.error('Error fetching profile:', profileError);
+            // If no profile exists, don't set profile/tenant
           } else if (profileData) {
             setProfile({
               ...profileData,
               email: session.user.email || '',
             });
-            setTenant(profileData.organizations);
+            // Only set tenant if org_id is not null
+            setTenant(profileData.org_id ? profileData.organizations : null);
           }
         }
       } catch (error) {
@@ -117,7 +119,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             ...profileData,
             email: newSession.user.email || '',
           });
-          setTenant(profileData.organizations);
+          // Only set tenant if org_id is not null
+          setTenant(profileData.org_id ? profileData.organizations : null);
         }
       }
     });

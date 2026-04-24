@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { AppProvider, useApp } from "./contexts/AppContext";
+import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { LoginPage } from "./components/LoginPage";
 import { LandingPage } from "./components/LandingPage";
 import { IndividualAuthPage } from "./components/IndividualAuthPage";
@@ -8,22 +8,22 @@ import { AuthCallback } from "./components/AuthCallback";
 import { Layout } from "./components/Layout";
 
 function AppInner() {
-  const { currentUser } = useApp();
+  const { user } = useAuth();
 
   return (
     <Routes>
-      <Route path="/" element={currentUser ? <Navigate to="/app" replace /> : <LandingPage />} />
+      <Route path="/" element={user ? <Navigate to="/app" replace /> : <LandingPage />} />
       <Route path="/auth/individual-login" element={<IndividualAuthPage />} />
       <Route
         path="/auth/organization-login"
-        element={currentUser ? <Navigate to="/app" replace /> : <LoginPage />}
+        element={user ? <Navigate to="/app" replace /> : <LoginPage />}
       />
       <Route path="/auth/callback" element={<AuthCallback />} />
       <Route path="/individual/dashboard" element={<IndividualDashboard />} />
       <Route
         path="/app/*"
         element={
-          currentUser ? (
+          user ? (
             <Layout />
           ) : (
             <Navigate to="/auth/organization-login" replace />
@@ -37,10 +37,10 @@ function AppInner() {
 
 export default function App() {
   return (
-    <AppProvider>
+    <AuthProvider>
       <BrowserRouter>
         <AppInner />
       </BrowserRouter>
-    </AppProvider>
+    </AuthProvider>
   );
 }

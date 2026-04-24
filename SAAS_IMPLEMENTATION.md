@@ -169,49 +169,70 @@ Super admins have system-wide access to manage all organizations and users.
 - Email sender verification (Resend/SendGrid)
 - Database backups (Supabase Pro)
 
-## Implementation Order
+## Database Setup & Migrations
 
-1. **Database Schema** (2-3 hours)
-   - Create organizations, profiles, invitations tables
-   - Add org_id to existing tables
-   - Create RLS policies
+### Required Migrations (Run in Supabase SQL Editor)
 
-2. **Authentication** (2-3 hours)
-   - Update AppContext → AuthContext
-   - Implement OAuth buttons
-   - Add magic link support
-   - Add individual auth flow
+1. **Initial Schema** (`supabase/migrations/001_initial_schema.sql`)
+2. **SaaS Schema** (`supabase/migrations/002_saas_schema.sql`)
+3. **Individual Users Support** (`supabase/migrations/003_individual_users.sql`)
 
-3. **Team Management** (2-3 hours)
-   - Build InviteMember component
-   - Create AcceptInvitation flow
-   - Add TeamSettings page
+**Important**: Run migration 003 to enable individual user accounts:
 
-4. **Individual Mode** (1-2 hours)
-   - Create IndividualAuthPage and IndividualDashboard
-   - Add auth callback handling
-   - Update routing for individual paths
+```sql
+-- Allow org_id to be null for individual users
+ALTER TABLE profiles ALTER COLUMN org_id DROP NOT NULL;
 
-5. **Super Admin Setup** (1 hour)
-   - Create SuperAdminDashboard
-   - Add super admin SQL script
-   - Update documentation
+-- Update RLS policies
+DROP POLICY IF EXISTS "Users can view profiles in their organization" ON profiles;
+CREATE POLICY "Users can view profiles in their organization or their own profile" ON profiles
+  FOR SELECT USING (
+    org_id = (SELECT org_id FROM profiles WHERE id = auth.uid())
+    OR id = auth.uid()
+    OR org_id IS NULL
+  );
 
-6. **Subscriptions** (3-4 hours)
-   - Setup Stripe integration (replacing Paystack)
-   - Create subscription dashboard
-   - Implement feature gating
+CREATE POLICY "Users can insert their own profile" ON profiles
+  FOR INSERT WITH CHECK (id = auth.uid());
+```
 
-7. **Admin Dashboard** (2-3 hours)
-   - Build SuperAdminDashboard (continued)
-   - Add audit log viewer
-   - Create support tools
+### Environment Variables
 
-8. **Testing & Deployment** (2-3 hours)
-   - Test multi-tenant isolation
-   - Verify RLS policies
-   - Test individual and organization flows
-   - Prepare for Cloudflare migration
+Add to your `.env` file:
+```
+VITE_SUPABASE_URL=your_supabase_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+```
+
+### Super Admin Setup
+
+1. Create a user account (signup at `/auth/individual-login` or organization login)
+2. Run the super admin SQL script in `supabase/create_superadmin.sql`
+3. Login and access `/app/admin` for system administration
+
+## Individual Account Setup
+
+### Troubleshooting Individual Signup
+
+If individual signup doesn't work:
+
+1. **Check Database Migration**: Ensure `003_individual_users.sql` has been run in Supabase
+2. **Check Console Logs**: Open browser dev tools and check for errors during signup
+3. **Email Confirmation**: Supabase may require email verification before login
+4. **RLS Policies**: The profile insert may fail if RLS policies block it
+
+**Common Issues:**
+- Profile creation fails → Run the migration to allow null org_id
+- No error messages → Check browser console for detailed errors
+- OAuth not working → Ensure redirect URLs are configured in Supabase
+
+### Individual User Flow
+
+1. Visit `/auth/individual-login`
+2. Sign up with email/password or use Google/GitHub OAuth
+3. Check email for verification (if required)
+4. Sign in to access `/individual/dashboard`
+5. Profile is automatically created with `role: 'manager'` and `org_id: null`
 
 ## Files to Create/Modify
 

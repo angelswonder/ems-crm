@@ -1,19 +1,15 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { createClient } from '@supabase/supabase-js';
+import { useAuth } from '../contexts/AuthContext';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
 import { Input } from './ui/input';
 import { ArrowLeft, Mail, Github, Chrome } from 'lucide-react';
 import { toast } from 'sonner';
 
-const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL || '',
-  import.meta.env.VITE_SUPABASE_ANON_KEY || ''
-);
-
 export const IndividualAuthPage: React.FC = () => {
   const navigate = useNavigate();
+  const { signInWithPassword, signInWithOAuth } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -22,64 +18,63 @@ export const IndividualAuthPage: React.FC = () => {
 
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('Form submitted', { email, password, isSignUp, fullName });
     setIsLoading(true);
 
     try {
       if (isSignUp) {
-        // Sign up
+        // Sign up - only create auth user, profile will be created on first sign in
+        console.log('Attempting signup...');
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
-            data: { 
+            data: {
               full_name: fullName,
               user_type: 'individual'
             },
           },
         });
 
-        if (error) throw error;
-
-        // For sign up, profile will be created after email confirmation
-        // Or immediately if no confirmation required
-        if (data.user) {
-          // Try to create profile immediately
-          const { error: profileError } = await supabase
-            .from('profiles')
-            .insert([{
-              id: data.user.id,
-              org_id: null,
-              full_name: fullName,
-              role: 'manager',
-              email: email,
-            }]);
-
-          if (profileError) {
-            console.warn('Profile creation failed (might be due to email confirmation):', profileError);
-          }
+        if (error) {
+          console.error('Signup error:', error);
+          throw error;
         }
 
+        console.log('Signup successful:', data);
         toast.success('Account created! Check your email to verify your account.');
         setIsSignUp(false); // Switch to sign in mode
       } else {
         // Sign in
+        console.log('Attempting signin...');
         const { data, error } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
 
-        if (error) throw error;
+        if (error) {
+          console.error('Signin error:', error);
+          throw error;
+        }
 
-        // Ensure profile exists
+        console.log('Signin successful:', data);
+
+        // Ensure profile exists after successful sign in
         if (data.user) {
-          const { data: existingProfile } = await supabase
+          console.log('Checking for existing profile...');
+          const { data: existingProfile, error: fetchError } = await supabase
             .from('profiles')
             .select('*')
             .eq('id', data.user.id)
             .single();
 
+          if (fetchError && fetchError.code !== 'PGRST116') { // PGRST116 is "not found"
+            console.error('Profile fetch error:', fetchError);
+            throw fetchError;
+          }
+
           if (!existingProfile) {
-            // Create profile if not exists
+            console.log('Creating profile...');
             const { error: profileError } = await supabase
               .from('profiles')
               .insert([{
@@ -92,9 +87,12 @@ export const IndividualAuthPage: React.FC = () => {
 
             if (profileError) {
               console.error('Profile creation error:', profileError);
-              toast.error('Failed to create profile');
+              toast.error('Failed to create profile: ' + profileError.message);
               return;
             }
+            console.log('Profile created successfully');
+          } else {
+            console.log('Profile already exists');
           }
         }
 
