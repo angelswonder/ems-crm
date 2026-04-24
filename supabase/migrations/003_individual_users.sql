@@ -60,29 +60,172 @@ CREATE POLICY "Users can update their own profile (limited fields)" ON profiles
 DROP POLICY IF EXISTS "Users can insert their own profile" ON profiles;
 
 -- Update existing tables to allow null org_id
-ALTER TABLE leads ALTER COLUMN org_id DROP NOT NULL;
-ALTER TABLE accounts ALTER COLUMN org_id DROP NOT NULL;
-ALTER TABLE contacts ALTER COLUMN org_id DROP NOT NULL;
-ALTER TABLE tasks ALTER COLUMN org_id DROP NOT NULL;
-ALTER TABLE cases ALTER COLUMN org_id DROP NOT NULL;
-ALTER TABLE opportunities ALTER COLUMN org_id DROP NOT NULL;
-ALTER TABLE campaigns ALTER COLUMN org_id DROP NOT NULL;
-ALTER TABLE energy_logs ALTER COLUMN org_id DROP NOT NULL;
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'leads') THEN
+    ALTER TABLE leads ALTER COLUMN org_id DROP NOT NULL;
+  END IF;
+
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'accounts') THEN
+    ALTER TABLE accounts ALTER COLUMN org_id DROP NOT NULL;
+  END IF;
+
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'contacts') THEN
+    ALTER TABLE contacts ALTER COLUMN org_id DROP NOT NULL;
+  END IF;
+
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'tasks') THEN
+    ALTER TABLE tasks ALTER COLUMN org_id DROP NOT NULL;
+  END IF;
+
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'cases') THEN
+    ALTER TABLE cases ALTER COLUMN org_id DROP NOT NULL;
+  END IF;
+
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'opportunities') THEN
+    ALTER TABLE opportunities ALTER COLUMN org_id DROP NOT NULL;
+  END IF;
+
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'campaigns') THEN
+    ALTER TABLE campaigns ALTER COLUMN org_id DROP NOT NULL;
+  END IF;
+
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'energy_logs') THEN
+    ALTER TABLE energy_logs ALTER COLUMN org_id DROP NOT NULL;
+  END IF;
+END$$;
 
 -- Update RLS policies for individual users (allow access when org_id is null)
 -- For individual users, they should only see their own data
-DROP POLICY IF EXISTS "Users can view leads in their org" ON leads;
-CREATE POLICY "Users can view leads in their org or own leads" ON leads
-  FOR SELECT USING (
-    org_id = (SELECT org_id FROM profiles WHERE id = auth.uid())
-    OR (org_id IS NULL AND created_by = auth.uid())
-  );
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'leads') THEN
+    DROP POLICY IF EXISTS "Users can view leads in their org" ON leads;
+    CREATE POLICY "Users can view leads in their org or own leads" ON leads
+      FOR SELECT USING (
+        org_id = (SELECT org_id FROM profiles WHERE id = auth.uid())
+        OR (org_id IS NULL AND created_by = auth.uid())
+      );
 
-DROP POLICY IF EXISTS "Users can insert leads for their org" ON leads;
-CREATE POLICY "Users can insert leads for their org or own leads" ON leads
-  FOR INSERT WITH CHECK (
-    org_id = (SELECT org_id FROM profiles WHERE id = auth.uid())
-    OR (org_id IS NULL AND created_by = auth.uid())
-  );
+    DROP POLICY IF EXISTS "Users can insert leads for their org" ON leads;
+    CREATE POLICY "Users can insert leads for their org or own leads" ON leads
+      FOR INSERT WITH CHECK (
+        org_id = (SELECT org_id FROM profiles WHERE id = auth.uid())
+        OR (org_id IS NULL AND created_by = auth.uid())
+      );
+  END IF;
+
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'accounts') THEN
+    DROP POLICY IF EXISTS "Users can view accounts in their org" ON accounts;
+    CREATE POLICY "Users can view accounts in their org or own accounts" ON accounts
+      FOR SELECT USING (
+        org_id = (SELECT org_id FROM profiles WHERE id = auth.uid())
+        OR (org_id IS NULL AND created_by = auth.uid())
+      );
+
+    DROP POLICY IF EXISTS "Users can insert accounts for their org" ON accounts;
+    CREATE POLICY "Users can insert accounts for their org or own accounts" ON accounts
+      FOR INSERT WITH CHECK (
+        org_id = (SELECT org_id FROM profiles WHERE id = auth.uid())
+        OR (org_id IS NULL AND created_by = auth.uid())
+      );
+  END IF;
+
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'contacts') THEN
+    DROP POLICY IF EXISTS "Users can view contacts in their org" ON contacts;
+    CREATE POLICY "Users can view contacts in their org or own contacts" ON contacts
+      FOR SELECT USING (
+        org_id = (SELECT org_id FROM profiles WHERE id = auth.uid())
+        OR (org_id IS NULL AND created_by = auth.uid())
+      );
+
+    DROP POLICY IF EXISTS "Users can insert contacts for their org" ON contacts;
+    CREATE POLICY "Users can insert contacts for their org or own contacts" ON contacts
+      FOR INSERT WITH CHECK (
+        org_id = (SELECT org_id FROM profiles WHERE id = auth.uid())
+        OR (org_id IS NULL AND created_by = auth.uid())
+      );
+  END IF;
+
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'tasks') THEN
+    DROP POLICY IF EXISTS "Users can view tasks in their org" ON tasks;
+    CREATE POLICY "Users can view tasks in their org or own tasks" ON tasks
+      FOR SELECT USING (
+        org_id = (SELECT org_id FROM profiles WHERE id = auth.uid())
+        OR (org_id IS NULL AND created_by = auth.uid())
+      );
+
+    DROP POLICY IF EXISTS "Users can insert tasks for their org" ON tasks;
+    CREATE POLICY "Users can insert tasks for their org or own tasks" ON tasks
+      FOR INSERT WITH CHECK (
+        org_id = (SELECT org_id FROM profiles WHERE id = auth.uid())
+        OR (org_id IS NULL AND created_by = auth.uid())
+      );
+  END IF;
+
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'cases') THEN
+    DROP POLICY IF EXISTS "Users can view cases in their org" ON cases;
+    CREATE POLICY "Users can view cases in their org or own cases" ON cases
+      FOR SELECT USING (
+        org_id = (SELECT org_id FROM profiles WHERE id = auth.uid())
+        OR (org_id IS NULL AND created_by = auth.uid())
+      );
+
+    DROP POLICY IF EXISTS "Users can insert cases for their org" ON cases;
+    CREATE POLICY "Users can insert cases for their org or own cases" ON cases
+      FOR INSERT WITH CHECK (
+        org_id = (SELECT org_id FROM profiles WHERE id = auth.uid())
+        OR (org_id IS NULL AND created_by = auth.uid())
+      );
+  END IF;
+
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'opportunities') THEN
+    DROP POLICY IF EXISTS "Users can view opportunities in their org" ON opportunities;
+    CREATE POLICY "Users can view opportunities in their org or own opportunities" ON opportunities
+      FOR SELECT USING (
+        org_id = (SELECT org_id FROM profiles WHERE id = auth.uid())
+        OR (org_id IS NULL AND created_by = auth.uid())
+      );
+
+    DROP POLICY IF EXISTS "Users can insert opportunities for their org" ON opportunities;
+    CREATE POLICY "Users can insert opportunities for their org or own opportunities" ON opportunities
+      FOR INSERT WITH CHECK (
+        org_id = (SELECT org_id FROM profiles WHERE id = auth.uid())
+        OR (org_id IS NULL AND created_by = auth.uid())
+      );
+  END IF;
+
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'campaigns') THEN
+    DROP POLICY IF EXISTS "Users can view campaigns in their org" ON campaigns;
+    CREATE POLICY "Users can view campaigns in their org or own campaigns" ON campaigns
+      FOR SELECT USING (
+        org_id = (SELECT org_id FROM profiles WHERE id = auth.uid())
+        OR (org_id IS NULL AND created_by = auth.uid())
+      );
+
+    DROP POLICY IF EXISTS "Users can insert campaigns for their org" ON campaigns;
+    CREATE POLICY "Users can insert campaigns for their org or own campaigns" ON campaigns
+      FOR INSERT WITH CHECK (
+        org_id = (SELECT org_id FROM profiles WHERE id = auth.uid())
+        OR (org_id IS NULL AND created_by = auth.uid())
+      );
+  END IF;
+
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'energy_logs') THEN
+    DROP POLICY IF EXISTS "Users can view energy logs in their org" ON energy_logs;
+    CREATE POLICY "Users can view energy logs in their org or own energy logs" ON energy_logs
+      FOR SELECT USING (
+        org_id = (SELECT org_id FROM profiles WHERE id = auth.uid())
+        OR (org_id IS NULL AND created_by = auth.uid())
+      );
+
+    DROP POLICY IF EXISTS "Users can insert energy logs for their org" ON energy_logs;
+    CREATE POLICY "Users can insert energy logs for their org or own energy logs" ON energy_logs
+      FOR INSERT WITH CHECK (
+        org_id = (SELECT org_id FROM profiles WHERE id = auth.uid())
+        OR (org_id IS NULL AND created_by = auth.uid())
+      );
+  END IF;
+END$$;
 
 -- Similar updates for other tables would be needed, but for now focus on profiles
