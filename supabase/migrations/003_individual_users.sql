@@ -1,5 +1,7 @@
 -- Update profiles table to support individual users
 -- Run this after 002_saas_schema.sql
+-- NOTE: This migration requires the profiles table to already exist.
+-- If you see "relation \"profiles\" does not exist", run 002_saas_schema.sql first.
 
 -- Allow org_id to be null for individual users
 ALTER TABLE profiles ALTER COLUMN org_id DROP NOT NULL;

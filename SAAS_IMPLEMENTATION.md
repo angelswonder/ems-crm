@@ -89,25 +89,32 @@ Individual users can access the system without creating an organization. They ge
 ### 3.5.2 Super Admin Setup
 Super admins have system-wide access to manage all organizations and users.
 
+**Important Security Note:**
+- Super admin elevation must be done manually by a database administrator.
+- Do not expose this path in client code.
+- Do not allow regular users to edit their own `role` or `org_id`.
+
 **Creating a Super Admin:**
-1. Sign up a regular user account with email (e.g., `superadmin@example.com`)
-2. Run the SQL script in `supabase/create_superadmin.sql` to promote the user:
-   ```sql
-   INSERT INTO profiles (id, org_id, full_name, role, email)
-   SELECT
-     id,
-     'super-admin',
-     'Super Administrator',
-     'owner',
-     email
-   FROM auth.users
-   WHERE email = 'superadmin@example.com'
-   ON CONFLICT (id) DO UPDATE SET
-     org_id = 'super-admin',
-     role = 'owner',
-     full_name = 'Super Administrator';
-   ```
-3. The user can now log in and access the Super Admin Dashboard at `/app/admin`
+1. Sign up a regular user account with email (e.g., `superadmin@example.com`).
+2. Ensure your database already has the `profiles` table created by `002_saas_schema.sql`.
+3. Run the SQL script in `supabase/create_superadmin.sql` to promote the user.
+
+**Secure promotion process:**
+- Use service-role or admin credentials when running the script.
+- Prefer the secure promotion function in `supabase/migrations/004_secure_admin_functions.sql` if available.
+
+**Example direct promotion:**
+```sql
+UPDATE profiles
+SET org_id = 'super-admin', role = 'owner'
+WHERE id = 'user-uuid-here';
+```
+
+**Recommended production path:**
+- Use a secure server-side function such as `promote_to_super_admin(user_uuid)`
+- Only allow super admins or trusted administrators to call it
+
+3. The user can now log in and access the Super Admin Dashboard at `/app/admin`.
 
 **Super Admin Features:**
 - View all organizations and their subscription status

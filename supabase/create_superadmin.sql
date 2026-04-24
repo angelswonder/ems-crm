@@ -1,6 +1,7 @@
 -- Create Super Admin User - SECURE VERSION
 -- This script requires SERVICE ROLE access and should only be run by database administrators
 -- DO NOT run this with regular user credentials
+-- NOTE: This script assumes the profiles table already exists from earlier schema migrations.
 
 -- IMPORTANT SECURITY NOTES:
 -- 1. This script should only be executed by trusted administrators
