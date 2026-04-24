@@ -91,9 +91,7 @@ export const SubscriptionPlans: React.FC<SubscriptionPlansProps> = ({ showPricin
     setSelectedPlan(plan);
 
     try {
-      // Redirect to Paystack checkout
-      // This would typically call an Edge Function that creates a Paystack checkout session
-      const checkoutUrl = await createPaystackCheckout(tenant.id, plan);
+      const checkoutUrl = await createStripeCheckout(tenant.id, plan);
       window.location.href = checkoutUrl;
     } catch (error) {
       console.error('Checkout error:', error);
@@ -102,9 +100,8 @@ export const SubscriptionPlans: React.FC<SubscriptionPlansProps> = ({ showPricin
     }
   };
 
-  const createPaystackCheckout = async (orgId: string, plan: 'pro'): Promise<string> => {
-    // Call Edge Function to create Paystack session
-    const { data, error } = await supabase.functions.invoke('paystack-checkout', {
+  const createStripeCheckout = async (orgId: string, plan: 'pro'): Promise<string> => {
+    const { data, error } = await supabase.functions.invoke('stripe-checkout', {
       body: {
         org_id: orgId,
         plan,
@@ -112,7 +109,7 @@ export const SubscriptionPlans: React.FC<SubscriptionPlansProps> = ({ showPricin
     });
 
     if (error) throw error;
-    return data.authorization_url;
+    return (data as any).checkout_url;
   };
 
   if (!showPricing) {
@@ -264,13 +261,7 @@ export const SubscriptionPlans: React.FC<SubscriptionPlansProps> = ({ showPricin
               <span className="group-open:rotate-180 transition-transform">▼</span>
             </summary>
             <p className="text-slate-400 text-sm mt-2 ml-0">
-              We accept all major credit cards and offer Paystack for African businesses. For Enterprise,
-              we can arrange wire transfers and custom payment terms.
-            </p>
-          </details>
-
-          <details className="group cursor-pointer">
-            <summary className="flex items-center justify-between text-white font-medium hover:text-indigo-400 transition-colors">
+                  We accept all major credit cards through Stripe. For Enterprise,
               Is there a long-term contract?
               <span className="group-open:rotate-180 transition-transform">▼</span>
             </summary>

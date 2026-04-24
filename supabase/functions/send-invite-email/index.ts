@@ -77,7 +77,7 @@ serve(async (req) => {
               <p>Happy tracking!<br>The EMS Team</p>
             </div>
             <div class="footer">
-              <p>&copy; 2024 EMS Tracker. All rights reserved.</p>
+              <p>&copy; 2026 EMS Tracker. All rights reserved.</p>
             </div>
           </div>
         </body>

@@ -58,6 +58,32 @@ export const SuperAdminDashboard: React.FC = () => {
   });
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+
+  const toggleOrgPlan = async (org: OrgStats) => {
+    const action = org.plan_type === 'pro' ? 'deactivate_pro' : 'activate_pro';
+    setActionLoading(org.id);
+
+    try {
+      const { error } = await supabase.functions.invoke('stripe-admin-toggle', {
+        body: { org_id: org.id, action },
+      });
+
+      if (error) throw error;
+
+      toast.success(
+        action === 'activate_pro'
+          ? `${org.name} has been upgraded to Pro.`
+          : `${org.name} has been downgraded to Free.`
+      );
+      await fetchSystemData();
+    } catch (err) {
+      console.error('Admin toggle error:', err);
+      toast.error('Unable to update organization status.');
+    } finally {
+      setActionLoading(null);
+    }
+  };
 
   // Only super-admin can access this
   const isSuperAdmin = profile?.role === 'owner' && profile?.org_id === 'super-admin';
@@ -323,12 +349,13 @@ export const SuperAdminDashboard: React.FC = () => {
               <th className="px-6 py-4">Team</th>
               <th className="px-6 py-4">Email</th>
               <th className="px-6 py-4">Created</th>
+              <th className="px-6 py-4">Action</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-white/5">
             {filteredOrganizations.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-6 py-8 text-center text-slate-500">
+                <td colSpan={7} className="px-6 py-8 text-center text-slate-500">
                   No organizations found
                 </td>
               </tr>
@@ -370,6 +397,32 @@ export const SuperAdminDashboard: React.FC = () => {
                       day: 'numeric',
                       year: 'numeric',
                     })}
+                  </td>
+                  <td className="px-6 py-4">
+                    {org.plan_type === 'enterprise' ? (
+                      <button
+                        disabled
+                        className="px-3 py-2 rounded-lg bg-slate-700 text-slate-400 text-xs font-semibold uppercase tracking-widest"
+                      >
+                        Enterprise
+                      </button>
+                    ) : (
+                      <button
+                        disabled={actionLoading === org.id}
+                        onClick={() => toggleOrgPlan(org)}
+                        className={`px-3 py-2 rounded-lg text-xs font-semibold uppercase tracking-widest transition-all ${
+                          org.plan_type === 'pro'
+                            ? 'bg-red-600 hover:bg-red-500 text-white'
+                            : 'bg-emerald-600 hover:bg-emerald-500 text-white'
+                        } ${actionLoading === org.id ? 'opacity-70 cursor-not-allowed' : ''}`}
+                      >
+                        {actionLoading === org.id
+                          ? 'Updating...'
+                          : org.plan_type === 'pro'
+                            ? 'Deactivate Pro'
+                            : 'Activate Pro'}
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))
