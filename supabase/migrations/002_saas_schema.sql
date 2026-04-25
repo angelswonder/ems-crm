@@ -282,6 +282,7 @@ CREATE TRIGGER update_subscriptions_updated_at BEFORE UPDATE ON subscriptions
 -- Organizations - Users can only see their own org
 ALTER TABLE organizations ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view their organization" ON organizations;
 CREATE POLICY "Users can view their organization" ON organizations
   FOR SELECT USING (
     id = (SELECT org_id FROM profiles WHERE id = auth.uid())
@@ -294,6 +295,7 @@ CREATE POLICY "Users can view their organization" ON organizations
     )
   );
 
+DROP POLICY IF EXISTS "Only organization owner can update" ON organizations;
 CREATE POLICY "Only organization owner can update" ON organizations
   FOR UPDATE USING (
     EXISTS (
@@ -307,22 +309,26 @@ CREATE POLICY "Only organization owner can update" ON organizations
 -- Profiles - Users can view team members in their org
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view profiles in their organization" ON profiles;
 CREATE POLICY "Users can view profiles in their organization" ON profiles
   FOR SELECT USING (
     org_id = (SELECT org_id FROM profiles WHERE id = auth.uid())
   );
 
+DROP POLICY IF EXISTS "Users can update their own profile" ON profiles;
 CREATE POLICY "Users can update their own profile" ON profiles
   FOR UPDATE USING (id = auth.uid());
 
 -- Invitations - Users can see invitations for their org
 ALTER TABLE invitations ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view invitations for their organization" ON invitations;
 CREATE POLICY "Users can view invitations for their organization" ON invitations
   FOR SELECT USING (
     org_id = (SELECT org_id FROM profiles WHERE id = auth.uid())
   );
 
+DROP POLICY IF EXISTS "Only admin+ can create invitations" ON invitations;
 CREATE POLICY "Only admin+ can create invitations" ON invitations
   FOR INSERT WITH CHECK (
     EXISTS (
@@ -336,6 +342,7 @@ CREATE POLICY "Only admin+ can create invitations" ON invitations
 -- Subscriptions
 ALTER TABLE subscriptions ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view subscription for their org" ON subscriptions;
 CREATE POLICY "Users can view subscription for their org" ON subscriptions
   FOR SELECT USING (
     org_id = (SELECT org_id FROM profiles WHERE id = auth.uid())
@@ -344,11 +351,13 @@ CREATE POLICY "Users can view subscription for their org" ON subscriptions
 -- Audit Logs
 ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view audit logs for their org" ON audit_logs;
 CREATE POLICY "Users can view audit logs for their org" ON audit_logs
   FOR SELECT USING (
     org_id = (SELECT org_id FROM profiles WHERE id = auth.uid())
   );
 
+DROP POLICY IF EXISTS "Service role can insert audit logs" ON audit_logs;
 CREATE POLICY "Service role can insert audit logs" ON audit_logs
   FOR INSERT WITH CHECK (true); -- Edge Functions use service role
 
@@ -361,19 +370,22 @@ DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'leads') THEN
     ALTER TABLE leads ENABLE ROW LEVEL SECURITY;
+    DROP POLICY IF EXISTS "Users can view leads in their org" ON leads;
     CREATE POLICY "Users can view leads in their org" ON leads
       FOR SELECT USING (
         org_id = (SELECT org_id FROM profiles WHERE id = auth.uid())
       );
+    DROP POLICY IF EXISTS "Users can insert leads for their org" ON leads;
     CREATE POLICY "Users can insert leads for their org" ON leads
       FOR INSERT WITH CHECK (
         org_id = (SELECT org_id FROM profiles WHERE id = auth.uid())
       );
+    DROP POLICY IF EXISTS "Users can update leads in their org" ON leads;
     CREATE POLICY "Users can update leads in their org" ON leads
       FOR UPDATE USING (
         org_id = (SELECT org_id FROM profiles WHERE id = auth.uid())
       );
-    CREATE POLICY "Users can delete leads in their org" ON leads
+    DROP POLICY IF EXISTS "Users can delete leads in their org" ON leads
       FOR DELETE USING (
         org_id = (SELECT org_id FROM profiles WHERE id = auth.uid())
       );
@@ -385,10 +397,13 @@ DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'accounts') THEN
     ALTER TABLE accounts ENABLE ROW LEVEL SECURITY;
+    DROP POLICY IF EXISTS "Users can view accounts in their org" ON accounts;
     CREATE POLICY "Users can view accounts in their org" ON accounts
       FOR SELECT USING (org_id = (SELECT org_id FROM profiles WHERE id = auth.uid()));
+    DROP POLICY IF EXISTS "Users can modify accounts in their org" ON accounts;
     CREATE POLICY "Users can modify accounts in their org" ON accounts
       FOR INSERT WITH CHECK (org_id = (SELECT org_id FROM profiles WHERE id = auth.uid()));
+    DROP POLICY IF EXISTS "Users can update accounts in their org" ON accounts;
     CREATE POLICY "Users can update accounts in their org" ON accounts
       FOR UPDATE USING (org_id = (SELECT org_id FROM profiles WHERE id = auth.uid()));
   END IF;
@@ -399,10 +414,13 @@ DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'contacts') THEN
     ALTER TABLE contacts ENABLE ROW LEVEL SECURITY;
+    DROP POLICY IF EXISTS "Users can view contacts in their org" ON contacts;
     CREATE POLICY "Users can view contacts in their org" ON contacts
       FOR SELECT USING (org_id = (SELECT org_id FROM profiles WHERE id = auth.uid()));
+    DROP POLICY IF EXISTS "Users can manage contacts in their org" ON contacts;
     CREATE POLICY "Users can manage contacts in their org" ON contacts
       FOR INSERT WITH CHECK (org_id = (SELECT org_id FROM profiles WHERE id = auth.uid()));
+    DROP POLICY IF EXISTS "Users can update contacts in their org" ON contacts;
     CREATE POLICY "Users can update contacts in their org" ON contacts
       FOR UPDATE USING (org_id = (SELECT org_id FROM profiles WHERE id = auth.uid()));
   END IF;
@@ -413,10 +431,13 @@ DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'tasks') THEN
     ALTER TABLE tasks ENABLE ROW LEVEL SECURITY;
+    DROP POLICY IF EXISTS "Users can view tasks in their org" ON tasks;
     CREATE POLICY "Users can view tasks in their org" ON tasks
       FOR SELECT USING (org_id = (SELECT org_id FROM profiles WHERE id = auth.uid()));
+    DROP POLICY IF EXISTS "Users can manage tasks in their org" ON tasks;
     CREATE POLICY "Users can manage tasks in their org" ON tasks
       FOR INSERT WITH CHECK (org_id = (SELECT org_id FROM profiles WHERE id = auth.uid()));
+    DROP POLICY IF EXISTS "Users can update tasks in their org" ON tasks;
     CREATE POLICY "Users can update tasks in their org" ON tasks
       FOR UPDATE USING (org_id = (SELECT org_id FROM profiles WHERE id = auth.uid()));
   END IF;
@@ -427,10 +448,13 @@ DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'cases') THEN
     ALTER TABLE cases ENABLE ROW LEVEL SECURITY;
+    DROP POLICY IF EXISTS "Users can view cases in their org" ON cases;
     CREATE POLICY "Users can view cases in their org" ON cases
       FOR SELECT USING (org_id = (SELECT org_id FROM profiles WHERE id = auth.uid()));
+    DROP POLICY IF EXISTS "Users can manage cases in their org" ON cases;
     CREATE POLICY "Users can manage cases in their org" ON cases
       FOR INSERT WITH CHECK (org_id = (SELECT org_id FROM profiles WHERE id = auth.uid()));
+    DROP POLICY IF EXISTS "Users can update cases in their org" ON cases;
     CREATE POLICY "Users can update cases in their org" ON cases
       FOR UPDATE USING (org_id = (SELECT org_id FROM profiles WHERE id = auth.uid()));
   END IF;
@@ -441,10 +465,13 @@ DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'opportunities') THEN
     ALTER TABLE opportunities ENABLE ROW LEVEL SECURITY;
+    DROP POLICY IF EXISTS "Users can view opportunities in their org" ON opportunities;
     CREATE POLICY "Users can view opportunities in their org" ON opportunities
       FOR SELECT USING (org_id = (SELECT org_id FROM profiles WHERE id = auth.uid()));
+    DROP POLICY IF EXISTS "Users can manage opportunities in their org" ON opportunities;
     CREATE POLICY "Users can manage opportunities in their org" ON opportunities
       FOR INSERT WITH CHECK (org_id = (SELECT org_id FROM profiles WHERE id = auth.uid()));
+    DROP POLICY IF EXISTS "Users can update opportunities in their org" ON opportunities;
     CREATE POLICY "Users can update opportunities in their org" ON opportunities
       FOR UPDATE USING (org_id = (SELECT org_id FROM profiles WHERE id = auth.uid()));
   END IF;
@@ -455,10 +482,13 @@ DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'campaigns') THEN
     ALTER TABLE campaigns ENABLE ROW LEVEL SECURITY;
+    DROP POLICY IF EXISTS "Users can view campaigns in their org" ON campaigns;
     CREATE POLICY "Users can view campaigns in their org" ON campaigns
       FOR SELECT USING (org_id = (SELECT org_id FROM profiles WHERE id = auth.uid()));
+    DROP POLICY IF EXISTS "Users can manage campaigns in their org" ON campaigns;
     CREATE POLICY "Users can manage campaigns in their org" ON campaigns
       FOR INSERT WITH CHECK (org_id = (SELECT org_id FROM profiles WHERE id = auth.uid()));
+    DROP POLICY IF EXISTS "Users can update campaigns in their org" ON campaigns;
     CREATE POLICY "Users can update campaigns in their org" ON campaigns
       FOR UPDATE USING (org_id = (SELECT org_id FROM profiles WHERE id = auth.uid()));
   END IF;

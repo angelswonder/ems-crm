@@ -49,6 +49,7 @@ CREATE POLICY "Users can view profiles in their organization or their own profil
   );
 
 DROP POLICY IF EXISTS "Users can update their own profile" ON profiles;
+DROP POLICY IF EXISTS "Users can update their own profile (limited fields)" ON profiles;
 CREATE POLICY "Users can update their own profile (limited fields)" ON profiles
   FOR UPDATE USING (id = auth.uid())
   WITH CHECK (
