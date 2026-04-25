@@ -1,5 +1,4 @@
 import { loadStripe } from '@stripe/stripe-js';
-import PaystackPop from 'paystack-js-sdk';
 
 export interface PaymentPlan {
   id: string;
@@ -91,37 +90,10 @@ export class PaymentService {
   }
 
   private async createPaystackSubscription(plan: PaymentPlan, customerEmail: string, customerName: string): Promise<PaymentResult> {
-    const config = this.getPaystackConfig();
-
-    if (!plan.paystackPlanCode) {
-      throw new Error('Paystack plan code not configured for this plan');
-    }
-
-    return new Promise((resolve) => {
-      PaystackPop.setup({
-        key: config.key,
-        email: customerEmail,
-        amount: plan.price * 100, // Paystack expects amount in kobo (multiply by 100)
-        currency: plan.currency,
-        plan: plan.paystackPlanCode,
-        metadata: {
-          customerName,
-          planName: plan.name
-        },
-        callback: (response: any) => {
-          resolve({
-            success: true,
-            transactionId: response.reference
-          });
-        },
-        onClose: () => {
-          resolve({
-            success: false,
-            error: 'Payment cancelled by user'
-          });
-        }
-      }).openIframe();
-    });
+    // Paystack browser checkout is intentionally not implemented in this client-only version.
+    // For a live production integration, move Paystack checkout creation to a secure server / Cloudflare Worker,
+    // then redirect the user to the hosted authorization URL.
+    throw new Error('Paystack client integration is not configured. Use Stripe or implement server-side Paystack checkout.');
   }
 
   // Get available plans
