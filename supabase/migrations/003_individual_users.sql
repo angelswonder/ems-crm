@@ -34,6 +34,11 @@ BEGIN
   ON CONFLICT (id) DO NOTHING;
 
   RETURN NEW;
+EXCEPTION
+  WHEN OTHERS THEN
+    -- Log the error but don't fail the auth signup
+    RAISE WARNING 'Failed to create profile for user %: %', NEW.id, SQLERRM;
+    RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
@@ -68,6 +73,10 @@ CREATE POLICY "Users can update their own profile (limited fields)" ON profiles
 DROP POLICY IF EXISTS "Users can insert their own profile" ON profiles;
 CREATE POLICY "Users can insert their own profile" ON profiles
   FOR INSERT WITH CHECK (id = auth.uid());
+
+-- Allow the trigger function to bypass RLS for profile creation
+ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+GRANT INSERT ON profiles TO authenticated;
 
 -- Update existing tables to allow null org_id
 DO $$

@@ -25,8 +25,8 @@ export const IndividualAuthPage: React.FC = () => {
       if (isSignUp) {
         // Sign up - create auth user with individual metadata
         console.log('Attempting signup...');
-        await signUp(email, password, fullName);
-        console.log('Signup successful');
+        const result = await signUp(email, password, fullName);
+        console.log('Signup successful:', result);
         toast.success('Account created! Check your email to verify your account.');
         setIsSignUp(false); // Switch to sign in mode
       } else {

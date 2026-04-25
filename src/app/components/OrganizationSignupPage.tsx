@@ -49,17 +49,19 @@ export const OrganizationSignupPage: React.FC = () => {
 
     setIsLoading(true);
     try {
+      console.log('Starting organization signup...');
       const signUpResult = await signUp(orgData.adminEmail, orgData.password, orgData.adminName, 'organization');
-      const ownerId = signUpResult.user?.id;
+      console.log('Signup result:', signUpResult);
 
-      if (!ownerId) {
-        throw new Error('Unable to create your account. Please check your email verification status before continuing.');
+      if (!signUpResult.user?.id) {
+        throw new Error('Signup failed - no user ID returned');
       }
 
+      console.log('Creating organization...');
       await createOrganization(
         orgData.name,
         orgData.slug,
-        ownerId,
+        signUpResult.user.id,
         orgData.adminEmail,
         orgData.adminName,
         'free'
