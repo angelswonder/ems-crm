@@ -385,7 +385,8 @@ BEGIN
       FOR UPDATE USING (
         org_id = (SELECT org_id FROM profiles WHERE id = auth.uid())
       );
-    DROP POLICY IF EXISTS "Users can delete leads in their org" ON leads
+    DROP POLICY IF EXISTS "Users can delete leads in their org" ON leads;
+    CREATE POLICY "Users can delete leads in their org" ON leads
       FOR DELETE USING (
         org_id = (SELECT org_id FROM profiles WHERE id = auth.uid())
       );
