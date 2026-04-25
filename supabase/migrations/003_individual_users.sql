@@ -53,26 +53,30 @@ DROP POLICY IF EXISTS "Users can view profiles in their organization" ON profile
 DROP POLICY IF EXISTS "Users can view profiles in their organization or their own profile" ON profiles;
 CREATE POLICY "Users can view profiles in their organization or their own profile" ON profiles
   FOR SELECT USING (
-    org_id = (SELECT org_id FROM profiles WHERE id = auth.uid())
-    OR id = auth.uid()  -- Allow users to see their own profile
-    OR org_id IS NULL   -- Allow viewing individual user profiles
+    -- Users can see their own profile
+    id = auth.uid()
+    -- Users can see profiles in their organization (if they have one)
+    OR (org_id IS NOT NULL AND org_id IN (
+      SELECT p.org_id FROM profiles p WHERE p.id = auth.uid() AND p.org_id IS NOT NULL
+    ))
+    -- Users can see individual profiles (org_id is null)
+    OR org_id IS NULL
   );
 
 DROP POLICY IF EXISTS "Users can update their own profile" ON profiles;
 DROP POLICY IF EXISTS "Users can update their own profile (limited fields)" ON profiles;
 CREATE POLICY "Users can update their own profile (limited fields)" ON profiles
   FOR UPDATE USING (id = auth.uid())
-  WITH CHECK (
-    id = auth.uid() AND
-    -- Prevent privilege escalation - users cannot change role or org_id
-    org_id IS NOT DISTINCT FROM (SELECT org_id FROM profiles WHERE id = auth.uid()) AND
-    role IS NOT DISTINCT FROM (SELECT role FROM profiles WHERE id = auth.uid())
-  );
+  WITH CHECK (id = auth.uid());
 
 -- Allow auth users to insert their own profile rows when signing up
 DROP POLICY IF EXISTS "Users can insert their own profile" ON profiles;
 CREATE POLICY "Users can insert their own profile" ON profiles
   FOR INSERT WITH CHECK (id = auth.uid());
+
+-- Allow the trigger function to bypass RLS for profile creation
+ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+GRANT INSERT ON profiles TO authenticated;
 
 -- Allow the trigger function to bypass RLS for profile creation
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
