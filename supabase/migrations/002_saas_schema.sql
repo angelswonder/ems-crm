@@ -60,7 +60,7 @@ CREATE TABLE IF NOT EXISTS profiles (
   email text,
   
   -- Role in organization
-  role text DEFAULT 'member' CHECK (role IN ('owner', 'admin', 'member', 'viewer')),
+  role text DEFAULT 'member' CHECK (role IN ('owner', 'admin', 'member', 'viewer', 'manager')),
   
   -- Settings
   theme_preference text DEFAULT 'dark',

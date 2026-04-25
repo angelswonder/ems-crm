@@ -7,6 +7,26 @@
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS email text;
 ALTER TABLE profiles ALTER COLUMN org_id DROP NOT NULL;
 
+DO $$
+DECLARE
+  current_constraint text;
+BEGIN
+  SELECT conname
+  INTO current_constraint
+  FROM pg_constraint
+  WHERE conrelid = 'profiles'::regclass
+    AND contype = 'c'
+    AND pg_get_constraintdef(oid) LIKE '%role IN (%';
+
+  IF current_constraint IS NOT NULL THEN
+    EXECUTE format('ALTER TABLE profiles DROP CONSTRAINT %I', current_constraint);
+  END IF;
+
+  ALTER TABLE profiles ADD CONSTRAINT profiles_role_check CHECK (
+    role IN ('owner', 'admin', 'member', 'viewer', 'manager')
+  );
+END$$;
+
 -- Create a function to safely create user profiles
 CREATE OR REPLACE FUNCTION create_user_profile()
 RETURNS TRIGGER AS $$

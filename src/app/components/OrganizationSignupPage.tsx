@@ -49,7 +49,7 @@ export const OrganizationSignupPage: React.FC = () => {
 
     setIsLoading(true);
     try {
-      const signUpResult = await signUp(orgData.adminEmail, orgData.password, orgData.adminName);
+      const signUpResult = await signUp(orgData.adminEmail, orgData.password, orgData.adminName, 'organization');
       const ownerId = signUpResult.user?.id;
 
       if (!ownerId) {

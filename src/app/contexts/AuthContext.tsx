@@ -46,7 +46,7 @@ interface AuthContextType {
   loading: boolean;
   
   // Auth methods
-  signUp: (email: string, password: string, fullName: string) => Promise<{ user: User | null; session: AuthSession | null }>;
+  signUp: (email: string, password: string, fullName: string, userType?: string) => Promise<{ user: User | null; session: AuthSession | null }>;
   signInWithPassword: (email: string, password: string) => Promise<void>;
   signInWithMagicLink: (email: string) => Promise<void>;
   signInWithOAuth: (provider: 'google' | 'github') => Promise<void>;
@@ -140,7 +140,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => subscription?.unsubscribe();
   }, []);
 
-  const signUp = useCallback(async (email: string, password: string, fullName: string) => {
+  const signUp = useCallback(async (email: string, password: string, fullName: string, userType: string = 'individual') => {
     try {
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -148,7 +148,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         options: {
           data: {
             full_name: fullName,
-            user_type: 'individual'
+            user_type: userType,
           },
         },
       });
