@@ -54,7 +54,7 @@ interface AuthContextType {
   resetPassword: (email: string) => Promise<void>;
   
   // Organization
-  createOrganization: (name: string, slug: string) => Promise<Tenant>;
+  createOrganization: (name: string, slug: string, ownerUserId?: string, ownerEmail?: string, ownerFullName?: string, planType?: 'free' | 'pro' | 'enterprise') => Promise<Tenant>;
   switchOrganization: (tenantId: string) => Promise<void>;
   
   // Profile
@@ -244,7 +244,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     slug: string,
     ownerUserId?: string,
     ownerEmail?: string,
-    ownerFullName?: string
+    ownerFullName?: string,
+    planType: 'free' | 'pro' | 'enterprise' = 'free'
   ): Promise<Tenant> => {
     const currentUserId = ownerUserId || user?.id;
     if (!currentUserId) throw new Error('User not authenticated');
@@ -256,6 +257,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .insert([{
           name,
           slug,
+          plan_type: planType,
+          subscription_status: planType === 'free' ? 'active' : 'trialing',
           billing_email: ownerEmail || user?.email,
         }])
         .select()

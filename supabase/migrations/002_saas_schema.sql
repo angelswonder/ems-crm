@@ -57,6 +57,7 @@ CREATE TABLE IF NOT EXISTS profiles (
   org_id uuid REFERENCES organizations(id) ON DELETE CASCADE NOT NULL,
   full_name text,
   avatar_url text,
+  email text,
   
   -- Role in organization
   role text DEFAULT 'member' CHECK (role IN ('owner', 'admin', 'member', 'viewer')),

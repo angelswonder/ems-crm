@@ -4,6 +4,7 @@
 -- If you see "relation \"profiles\" does not exist", run 002_saas_schema.sql first.
 
 -- Allow org_id to be null for individual users
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS email text;
 ALTER TABLE profiles ALTER COLUMN org_id DROP NOT NULL;
 
 -- Create a function to safely create user profiles
