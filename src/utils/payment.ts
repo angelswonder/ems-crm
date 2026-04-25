@@ -1,5 +1,3 @@
-import { loadStripe } from '@stripe/stripe-js';
-
 export interface PaymentPlan {
   id: string;
   name: string;
@@ -26,13 +24,14 @@ export class PaymentService {
     this.provider = (import.meta.env.VITE_PAYMENT_PROVIDER as 'stripe' | 'paystack') || 'stripe';
   }
 
-  private getStripe() {
+  private async getStripe() {
     if (!this.stripePromise) {
       const stripeKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
       if (!stripeKey) {
         throw new Error('Stripe publishable key not configured');
       }
-      this.stripePromise = loadStripe(stripeKey);
+      const stripeModule = await import('@stripe/stripe-js');
+      this.stripePromise = stripeModule.loadStripe(stripeKey);
     }
     return this.stripePromise;
   }

@@ -4,11 +4,13 @@ import type { User, AuthSession } from '@supabase/supabase-js';
 
 const normalizeSupabaseUrl = (url: string) => {
   if (!url) return url;
+  const cleaned = url.trim().replace(/\/+$|\s+$/g, '');
+
   try {
-    const parsedUrl = new URL(url.trim());
+    const parsedUrl = new URL(cleaned);
     return `${parsedUrl.protocol}//${parsedUrl.host}`;
   } catch {
-    return url.replace(/\/+$|\/auth\/v1.*$|\/rest\/v1.*$/i, '');
+    return cleaned.replace(/\/(auth|rest)\/v1.*$/i, '');
   }
 };
 
