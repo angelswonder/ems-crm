@@ -39,6 +39,7 @@ CREATE TRIGGER on_auth_user_created
 
 -- Update RLS policies to handle individual users (org_id = null)
 DROP POLICY IF EXISTS "Users can view profiles in their organization" ON profiles;
+DROP POLICY IF EXISTS "Users can view profiles in their organization or their own profile" ON profiles;
 CREATE POLICY "Users can view profiles in their organization or their own profile" ON profiles
   FOR SELECT USING (
     org_id = (SELECT org_id FROM profiles WHERE id = auth.uid())

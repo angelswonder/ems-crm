@@ -46,8 +46,8 @@ CREATE TABLE IF NOT EXISTS organizations (
 );
 
 -- Indexes for performance
-CREATE INDEX idx_org_slug ON organizations(slug);
-CREATE INDEX idx_org_subscription ON organizations(subscription_status);
+CREATE INDEX IF NOT EXISTS idx_org_slug ON organizations(slug);
+CREATE INDEX IF NOT EXISTS idx_org_subscription ON organizations(subscription_status);
 
 -- ============================================================================
 -- 2. PROFILES TABLE (Links Supabase Auth users to organizations)
@@ -74,8 +74,8 @@ CREATE TABLE IF NOT EXISTS profiles (
 );
 
 -- Indexes
-CREATE INDEX idx_profile_org ON profiles(org_id);
-CREATE INDEX idx_profile_role ON profiles(role);
+CREATE INDEX IF NOT EXISTS idx_profile_org ON profiles(org_id);
+CREATE INDEX IF NOT EXISTS idx_profile_role ON profiles(role);
 
 -- ============================================================================
 -- 3. INVITATIONS TABLE (Team invites)
@@ -102,9 +102,9 @@ CREATE TABLE IF NOT EXISTS invitations (
 );
 
 -- Indexes
-CREATE INDEX idx_invitation_org ON invitations(org_id);
-CREATE INDEX idx_invitation_token ON invitations(token);
-CREATE INDEX idx_invitation_status ON invitations(status);
+CREATE INDEX IF NOT EXISTS idx_invitation_org ON invitations(org_id);
+CREATE INDEX IF NOT EXISTS idx_invitation_token ON invitations(token);
+CREATE INDEX IF NOT EXISTS idx_invitation_status ON invitations(status);
 
 -- ============================================================================
 -- 4. SUBSCRIPTIONS TABLE (Detailed billing history)
@@ -138,7 +138,7 @@ CREATE TABLE IF NOT EXISTS subscriptions (
 );
 
 -- Index
-CREATE INDEX idx_subscription_org ON subscriptions(org_id);
+CREATE INDEX IF NOT EXISTS idx_subscription_org ON subscriptions(org_id);
 
 -- ============================================================================
 -- 5. AUDIT_LOGS TABLE (Compliance & security)
@@ -160,10 +160,10 @@ CREATE TABLE IF NOT EXISTS audit_logs (
 );
 
 -- Indexes for querying
-CREATE INDEX idx_audit_org ON audit_logs(org_id);
-CREATE INDEX idx_audit_user ON audit_logs(user_id);
-CREATE INDEX idx_audit_action ON audit_logs(action);
-CREATE INDEX idx_audit_created ON audit_logs(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_audit_org ON audit_logs(org_id);
+CREATE INDEX IF NOT EXISTS idx_audit_user ON audit_logs(user_id);
+CREATE INDEX IF NOT EXISTS idx_audit_action ON audit_logs(action);
+CREATE INDEX IF NOT EXISTS idx_audit_created ON audit_logs(created_at DESC);
 
 -- ============================================================================
 -- 6. ADD ORG_ID TO EXISTING CRM TABLES

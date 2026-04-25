@@ -52,8 +52,10 @@ export const OrganizationSignupPage: React.FC = () => {
     setIsLoading(true);
     try {
       // Check if organization slug is available
-      // For now, we'll assume it's available and proceed to payment
-      setStep('payment');
+      // For now, we'll assume it's available and proceed to completion
+      // Skip payment step - set to free plan
+      setSelectedPlan({ id: 'free', name: 'Free', price: 0, features: [] });
+      setStep('complete');
     } catch (error: any) {
       toast.error('Error validating organization details');
     } finally {
@@ -61,32 +63,9 @@ export const OrganizationSignupPage: React.FC = () => {
     }
   };
 
-  const handlePaymentSubmit = async () => {
-    if (!selectedPlan) {
-      toast.error('Please select a plan');
-      return;
-    }
-
+  const handleCompleteSubmit = async () => {
     setIsLoading(true);
     try {
-      if (selectedPlan.id !== 'free' && !paymentService.isConfigured()) {
-        toast.error('Payment service not configured. Please contact support.');
-        return;
-      }
-
-      if (selectedPlan.id !== 'free') {
-        const paymentResult = await paymentService.createSubscription(
-          selectedPlan,
-          orgData.adminEmail,
-          orgData.adminName
-        );
-
-        if (!paymentResult.success) {
-          toast.error(paymentResult.error || 'Payment failed');
-          return;
-        }
-      }
-
       const signUpResult = await signUp(orgData.adminEmail, orgData.password, orgData.adminName);
       const ownerId = signUpResult.user?.id;
 
@@ -98,6 +77,18 @@ export const OrganizationSignupPage: React.FC = () => {
         orgData.name,
         orgData.slug,
         ownerId,
+        'free' // Set to free plan
+      );
+
+      toast.success('Organization created successfully!');
+      navigate('/app');
+    } catch (error: any) {
+      console.error('Organization creation error:', error);
+      toast.error(error.message || 'Failed to create organization');
+    } finally {
+      setIsLoading(false);
+    }
+  };
         orgData.adminEmail,
         orgData.adminName
       );
@@ -220,7 +211,7 @@ export const OrganizationSignupPage: React.FC = () => {
         disabled={isLoading}
         className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3"
       >
-        {isLoading ? 'Validating...' : 'Continue to Payment'}
+        {isLoading ? 'Creating...' : 'Create Organization'}
       </Button>
     </form>
   );
@@ -376,23 +367,16 @@ export const OrganizationSignupPage: React.FC = () => {
       {/* Progress indicator */}
       <div className="max-w-md mx-auto px-4 py-4">
         <div className="flex items-center justify-between mb-8">
-          <div className={`flex items-center ${step === 'details' ? 'text-blue-400' : step === 'payment' || step === 'complete' ? 'text-green-400' : 'text-slate-600'}`}>
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${step === 'details' ? 'bg-blue-600' : step === 'payment' || step === 'complete' ? 'bg-green-600' : 'bg-slate-700'}`}>
+          <div className={`flex items-center ${step === 'details' ? 'text-blue-400' : step === 'complete' ? 'text-green-400' : 'text-slate-600'}`}>
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${step === 'details' ? 'bg-blue-600' : step === 'complete' ? 'bg-green-600' : 'bg-slate-700'}`}>
               1
             </div>
             <span className="ml-2 text-sm">Details</span>
           </div>
           <div className="flex-1 h-px bg-slate-700 mx-4" />
-          <div className={`flex items-center ${step === 'payment' ? 'text-blue-400' : step === 'complete' ? 'text-green-400' : 'text-slate-600'}`}>
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${step === 'payment' ? 'bg-blue-600' : step === 'complete' ? 'bg-green-600' : 'bg-slate-700'}`}>
-              2
-            </div>
-            <span className="ml-2 text-sm">Payment</span>
-          </div>
-          <div className="flex-1 h-px bg-slate-700 mx-4" />
           <div className={`flex items-center ${step === 'complete' ? 'text-green-400' : 'text-slate-600'}`}>
             <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${step === 'complete' ? 'bg-green-600' : 'bg-slate-700'}`}>
-              3
+              2
             </div>
             <span className="ml-2 text-sm">Complete</span>
           </div>
@@ -404,7 +388,6 @@ export const OrganizationSignupPage: React.FC = () => {
         <Card className="w-full max-w-md bg-slate-800/50 border-slate-700 backdrop-blur-md">
           <div className="p-8">
             {step === 'details' && renderDetailsStep()}
-            {step === 'payment' && renderPaymentStep()}
             {step === 'complete' && renderCompleteStep()}
           </div>
         </Card>
