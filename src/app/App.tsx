@@ -7,6 +7,9 @@ import { OrganizationSignupPage } from "./components/OrganizationSignupPage";
 import { IndividualDashboard } from "./components/IndividualDashboard";
 import { AuthCallback } from "./components/AuthCallback";
 import { Layout } from "./components/Layout";
+import { PrivacyPolicyPage } from "./components/PrivacyPolicyPage";
+import { TermsOfServicePage } from "./components/TermsOfServicePage";
+import { ContactPage } from "./components/ContactPage";
 
 function AppInner() {
   const { user } = useAuth();
@@ -32,6 +35,9 @@ function AppInner() {
           )
         }
       />
+      <Route path="/privacy" element={<PrivacyPolicyPage />} />
+      <Route path="/terms" element={<TermsOfServicePage />} />
+      <Route path="/contact" element={<ContactPage />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

@@ -254,9 +254,27 @@ export const LandingPage: React.FC = () => {
           <div className="flex flex-col sm:flex-row justify-between items-center gap-4 text-sm text-slate-400">
             <p>&copy; 2026 Industrial EMS. All rights reserved.</p>
             <div className="flex gap-6">
-              <a href="#" className="hover:text-slate-300 transition-colors">Privacy Policy</a>
-              <a href="#" className="hover:text-slate-300 transition-colors">Terms of Service</a>
-              <a href="#" className="hover:text-slate-300 transition-colors">Contact</a>
+              <button
+                type="button"
+                onClick={() => navigate('/privacy')}
+                className="hover:text-slate-300 transition-colors"
+              >
+                Privacy Policy
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate('/terms')}
+                className="hover:text-slate-300 transition-colors"
+              >
+                Terms of Service
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate('/contact')}
+                className="hover:text-slate-300 transition-colors"
+              >
+                Contact
+              </button>
             </div>
           </div>
         </div>

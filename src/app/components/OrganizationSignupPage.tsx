@@ -69,56 +69,49 @@ export const OrganizationSignupPage: React.FC = () => {
 
     setIsLoading(true);
     try {
-      // For free plan, skip payment processing
-      if (selectedPlan.id === 'free') {
-        // Create user account
-        await signUp(orgData.adminEmail, orgData.password, orgData.adminName);
-
-        // Create organization
-        const org = await createOrganization(orgData.name, orgData.slug);
-
-        toast.success('Organization created successfully!');
-        setStep('complete');
-
-        // Redirect after a delay
-        setTimeout(() => {
-          navigate('/app');
-        }, 3000);
-        return;
-      }
-
-      // Check if payment service is configured
-      if (!paymentService.isConfigured()) {
+      if (selectedPlan.id !== 'free' && !paymentService.isConfigured()) {
         toast.error('Payment service not configured. Please contact support.');
         return;
       }
 
-      // Process payment
-      const paymentResult = await paymentService.createSubscription(
-        selectedPlan,
+      if (selectedPlan.id !== 'free') {
+        const paymentResult = await paymentService.createSubscription(
+          selectedPlan,
+          orgData.adminEmail,
+          orgData.adminName
+        );
+
+        if (!paymentResult.success) {
+          toast.error(paymentResult.error || 'Payment failed');
+          return;
+        }
+      }
+
+      const signUpResult = await signUp(orgData.adminEmail, orgData.password, orgData.adminName);
+      const ownerId = signUpResult.user?.id;
+
+      if (!ownerId) {
+        throw new Error('Unable to create your account. Please check your email verification status before continuing.');
+      }
+
+      await createOrganization(
+        orgData.name,
+        orgData.slug,
+        ownerId,
         orgData.adminEmail,
         orgData.adminName
       );
 
-      if (!paymentResult.success) {
-        toast.error(paymentResult.error || 'Payment failed');
-        return;
-      }
-
-      // Create user account
-      await signUp(orgData.adminEmail, orgData.password, orgData.adminName);
-
-      // Create organization
-      const org = await createOrganization(orgData.name, orgData.slug);
-
       toast.success('Organization created successfully!');
       setStep('complete');
 
-      // Redirect after a delay
       setTimeout(() => {
-        navigate('/app');
+        if (signUpResult.session?.user) {
+          navigate('/app');
+        } else {
+          navigate('/auth/organization-login');
+        }
       }, 3000);
-
     } catch (error: any) {
       console.error('Organization creation error:', error);
       toast.error(error.message || 'Failed to create organization');

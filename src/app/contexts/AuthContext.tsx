@@ -2,8 +2,18 @@ import React, { createContext, useContext, useEffect, useState, useCallback } fr
 import { createClient } from '@supabase/supabase-js';
 import type { User, AuthSession } from '@supabase/supabase-js';
 
+const normalizeSupabaseUrl = (url: string) => {
+  if (!url) return url;
+  try {
+    const parsedUrl = new URL(url.trim());
+    return `${parsedUrl.protocol}//${parsedUrl.host}`;
+  } catch {
+    return url.replace(/\/+$|\/auth\/v1.*$|\/rest\/v1.*$/i, '');
+  }
+};
+
 const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL || '',
+  normalizeSupabaseUrl(import.meta.env.VITE_SUPABASE_URL || ''),
   import.meta.env.VITE_SUPABASE_ANON_KEY || ''
 );
 
@@ -34,7 +44,7 @@ interface AuthContextType {
   loading: boolean;
   
   // Auth methods
-  signUp: (email: string, password: string, fullName: string) => Promise<void>;
+  signUp: (email: string, password: string, fullName: string) => Promise<{ user: User | null; session: AuthSession | null }>;
   signInWithPassword: (email: string, password: string) => Promise<void>;
   signInWithMagicLink: (email: string) => Promise<void>;
   signInWithOAuth: (provider: 'google' | 'github') => Promise<void>;
@@ -130,11 +140,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signUp = useCallback(async (email: string, password: string, fullName: string) => {
     try {
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          data: { 
+          data: {
             full_name: fullName,
             user_type: 'individual'
           },
@@ -143,7 +153,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (error) throw error;
 
-      // Note: User should verify email before full account is created
+      if (data?.session?.user) {
+        setSession(data.session);
+        setUser(data.session.user);
+      }
+
+      return {
+        user: data?.user || null,
+        session: data?.session || null,
+      };
     } catch (error) {
       console.error('Sign up error:', error);
       throw error;
@@ -219,8 +237,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
 
-  const createOrganization = useCallback(async (name: string, slug: string): Promise<Tenant> => {
-    if (!user) throw new Error('User not authenticated');
+  const createOrganization = useCallback(async (
+    name: string,
+    slug: string,
+    ownerUserId?: string,
+    ownerEmail?: string,
+    ownerFullName?: string
+  ): Promise<Tenant> => {
+    const currentUserId = ownerUserId || user?.id;
+    if (!currentUserId) throw new Error('User not authenticated');
 
     try {
       // Create organization
@@ -229,22 +254,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .insert([{
           name,
           slug,
-          billing_email: user.email,
+          billing_email: ownerEmail || user?.email,
         }])
         .select()
         .single();
 
       if (orgError) throw orgError;
 
-      // Create profile linking user to org
+      // Create or upsert profile linking user to org
       const { error: profileError } = await supabase
         .from('profiles')
-        .insert([{
-          id: user.id,
+        .upsert([{
+          id: currentUserId,
           org_id: org.id,
-          full_name: user.user_metadata?.full_name || '',
+          full_name: ownerFullName || user?.user_metadata?.full_name || '',
           role: 'owner', // Creator is owner
-        }]);
+        }], { onConflict: 'id' });
 
       if (profileError) throw profileError;
 

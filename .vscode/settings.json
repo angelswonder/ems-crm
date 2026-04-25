@@ -1,0 +1,8 @@
+{
+    "chat.tools.terminal.autoApprove": {
+        "/^cd \"c:\\\\Users\\\\omen\\\\Downloads\\\\Industrial Management Tracking System\" ;& cmd\\.exe /c \"npm run build\"$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
+    }
+}
