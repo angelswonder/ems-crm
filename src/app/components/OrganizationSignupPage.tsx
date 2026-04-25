@@ -89,27 +89,6 @@ export const OrganizationSignupPage: React.FC = () => {
       setIsLoading(false);
     }
   };
-        orgData.adminEmail,
-        orgData.adminName
-      );
-
-      toast.success('Organization created successfully!');
-      setStep('complete');
-
-      setTimeout(() => {
-        if (signUpResult.session?.user) {
-          navigate('/app');
-        } else {
-          navigate('/auth/organization-login');
-        }
-      }, 3000);
-    } catch (error: any) {
-      console.error('Organization creation error:', error);
-      toast.error(error.message || 'Failed to create organization');
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const renderDetailsStep = () => (
     <form onSubmit={handleDetailsSubmit} className="space-y-6">
