@@ -117,8 +117,14 @@ GITHUB_CLIENT_SECRET=your-github-client-secret
 PAYSTACK_PUBLIC_KEY=pk_live_your_paystack_key
 PAYSTACK_SECRET_KEY=sk_live_your_paystack_secret
 
+# Alternative: Stripe (if preferred over Paystack)
+VITE_PAYMENT_PROVIDER=stripe
+VITE_STRIPE_PUBLISHABLE_KEY=pk_live_your_stripe_key
+STRIPE_SECRET_KEY=sk_live_your_stripe_secret
+
 # Email Service
 RESEND_API_KEY=your-resend-key (already set)
+```
 ```
 
 ### 2.2 Setup OAuth Providers
@@ -148,7 +154,69 @@ RESEND_API_KEY=your-resend-key (already set)
 2. Enable **Google** and **GitHub**
 3. Add your credentials from above
 
-### 2.3 Update LoginPage Component
+### 2.4 Payment Integration Setup
+
+The application supports both **Stripe** and **Paystack** for payment processing. Choose one provider and configure it:
+
+#### Option A: Paystack Setup (Recommended for African markets)
+
+1. Go to [Paystack Dashboard](https://dashboard.paystack.com)
+2. Create an account or log in
+3. Go to Settings → API Keys & Webhooks
+4. Copy your **Public Key** and **Secret Key**
+5. Set environment variables:
+   ```env
+   VITE_PAYMENT_PROVIDER=paystack
+   VITE_PAYSTACK_PUBLIC_KEY=pk_live_your_paystack_key
+   PAYSTACK_SECRET_KEY=sk_live_your_paystack_secret
+   ```
+
+#### Option B: Stripe Setup (Global payments)
+
+1. Go to [Stripe Dashboard](https://dashboard.stripe.com)
+2. Create an account or log in
+3. Go to Developers → API Keys
+4. Copy your **Publishable key** and **Secret key**
+5. Set environment variables:
+   ```env
+   VITE_PAYMENT_PROVIDER=stripe
+   VITE_STRIPE_PUBLISHABLE_KEY=pk_live_your_stripe_key
+   STRIPE_SECRET_KEY=sk_live_your_stripe_secret
+   ```
+
+#### Create Subscription Plans
+
+For each payment provider, create corresponding plans:
+
+**Paystack Plans:**
+- Free Plan: No Paystack plan needed
+- Pro Plan: Create a ₦15,000/month plan (or $29 equivalent)
+- Enterprise Plan: Create a ₦50,000/month plan (or $99 equivalent)
+
+**Stripe Plans:**
+- Free Plan: No Stripe plan needed
+- Pro Plan: Create a $29/month price
+- Enterprise Plan: Create a $99/month price
+
+Update the plan codes/IDs in `src/utils/payment.ts`:
+```typescript
+// For Paystack
+paystackPlanCode: 'PLN_your_plan_code'
+
+// For Stripe
+stripePriceId: 'price_your_price_id'
+```
+
+#### Test Payment Flow
+
+1. Set up your payment provider
+2. Update environment variables
+3. Test organization signup with paid plans
+4. Verify webhooks are configured for subscription updates
+
+---
+
+## Phase 3: Team Management ✨
 
 Replace your current `LoginPage.tsx` to support the new auth methods:
 

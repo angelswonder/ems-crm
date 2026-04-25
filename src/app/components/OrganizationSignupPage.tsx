@@ -4,14 +4,16 @@ import { useAuth } from '../contexts/AuthContext';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
 import { Input } from './ui/input';
-import { ArrowLeft, Building2, Mail, Lock, User, CreditCard, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Building2, Mail, Lock, User, CreditCard, CheckCircle, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
+import { paymentService, PaymentPlan } from '../../utils/payment';
 
 export const OrganizationSignupPage: React.FC = () => {
   const navigate = useNavigate();
   const { signUp, createOrganization } = useAuth();
   const [step, setStep] = useState<'details' | 'payment' | 'complete'>('details');
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<PaymentPlan | null>(null);
 
   // Form data
   const [orgData, setOrgData] = useState({
@@ -60,11 +62,48 @@ export const OrganizationSignupPage: React.FC = () => {
   };
 
   const handlePaymentSubmit = async () => {
+    if (!selectedPlan) {
+      toast.error('Please select a plan');
+      return;
+    }
+
     setIsLoading(true);
     try {
-      // TODO: Integrate with Stripe/Paystack
-      // For now, simulate payment success
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // For free plan, skip payment processing
+      if (selectedPlan.id === 'free') {
+        // Create user account
+        await signUp(orgData.adminEmail, orgData.password, orgData.adminName);
+
+        // Create organization
+        const org = await createOrganization(orgData.name, orgData.slug);
+
+        toast.success('Organization created successfully!');
+        setStep('complete');
+
+        // Redirect after a delay
+        setTimeout(() => {
+          navigate('/app');
+        }, 3000);
+        return;
+      }
+
+      // Check if payment service is configured
+      if (!paymentService.isConfigured()) {
+        toast.error('Payment service not configured. Please contact support.');
+        return;
+      }
+
+      // Process payment
+      const paymentResult = await paymentService.createSubscription(
+        selectedPlan,
+        orgData.adminEmail,
+        orgData.adminName
+      );
+
+      if (!paymentResult.success) {
+        toast.error(paymentResult.error || 'Payment failed');
+        return;
+      }
 
       // Create user account
       await signUp(orgData.adminEmail, orgData.password, orgData.adminName);
@@ -193,90 +232,111 @@ export const OrganizationSignupPage: React.FC = () => {
     </form>
   );
 
-  const renderPaymentStep = () => (
-    <div className="space-y-6">
-      <div className="text-center mb-8">
-        <h2 className="text-2xl font-bold mb-2">Choose Your Plan</h2>
-        <p className="text-slate-400">Start with a 14-day free trial, no credit card required</p>
-      </div>
+  const renderPaymentStep = () => {
+    const plans = paymentService.getPlans();
+    const isPaymentConfigured = paymentService.isConfigured();
 
-      <div className="grid md:grid-cols-3 gap-4 mb-8">
-        {/* Free Plan */}
-        <Card className="p-6 border-slate-600 bg-slate-800/50">
+    return (
+      <div className="space-y-6">
+        <div className="text-center mb-8">
+          <h2 className="text-2xl font-bold mb-2">Choose Your Plan</h2>
+          <p className="text-slate-400">
+            {isPaymentConfigured
+              ? 'Start with a 14-day free trial, no credit card required'
+              : 'Payment service not configured - contact support for paid plans'
+            }
+          </p>
+        </div>
+
+        <div className="grid md:grid-cols-3 gap-4 mb-8">
+          {plans.map((plan) => (
+            <Card
+              key={plan.id}
+              className={`p-6 border-2 transition-all duration-300 cursor-pointer ${
+                selectedPlan?.id === plan.id
+                  ? plan.id === 'pro'
+                    ? 'border-blue-500 bg-blue-900/20'
+                    : 'border-green-500 bg-green-900/20'
+                  : 'border-slate-600 bg-slate-800/50 hover:border-slate-500'
+              }`}
+              onClick={() => setSelectedPlan(plan)}
+            >
+              <div className="text-center">
+                <h3 className="text-lg font-semibold mb-2">{plan.name}</h3>
+                <div className="text-3xl font-bold mb-4">
+                  ${plan.price}
+                  <span className="text-lg font-normal">/{plan.interval}</span>
+                </div>
+                <ul className="text-sm text-slate-300 space-y-2 mb-6">
+                  {plan.features.map((feature, index) => (
+                    <li key={index} className="flex items-start gap-2">
+                      <span className="w-4 h-4 bg-green-600 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <span className="w-1.5 h-1.5 bg-white rounded-full" />
+                      </span>
+                      <span>{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+                <Button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedPlan(plan);
+                    handlePaymentSubmit();
+                  }}
+                  disabled={isLoading || (plan.id !== 'free' && !isPaymentConfigured)}
+                  className={`w-full ${
+                    plan.id === 'free'
+                      ? 'bg-slate-600 hover:bg-slate-700'
+                      : plan.id === 'pro'
+                      ? 'bg-blue-600 hover:bg-blue-700'
+                      : 'bg-purple-600 hover:bg-purple-700'
+                  }`}
+                >
+                  {isLoading ? 'Processing...' :
+                   plan.id === 'free' ? 'Start Free Trial' :
+                   plan.id === 'enterprise' ? 'Contact Sales' :
+                   `Start ${plan.name} Trial`}
+                </Button>
+              </div>
+            </Card>
+          ))}
+        </div>
+
+        {selectedPlan && (
           <div className="text-center">
-            <h3 className="text-lg font-semibold mb-2">Free</h3>
-            <div className="text-3xl font-bold mb-4">$0<span className="text-lg font-normal">/month</span></div>
-            <ul className="text-sm text-slate-300 space-y-2 mb-6">
-              <li>✓ Up to 3 team members</li>
-              <li>✓ Basic analytics</li>
-              <li>✓ 14-day trial</li>
-              <li>✗ Advanced reports</li>
-            </ul>
             <Button
               onClick={handlePaymentSubmit}
               disabled={isLoading}
-              className="w-full bg-slate-600 hover:bg-slate-700"
+              className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white"
             >
-              Start Free Trial
+              {isLoading ? 'Processing Payment...' : `Continue with ${selectedPlan.name} Plan`}
             </Button>
           </div>
-        </Card>
+        )}
 
-        {/* Pro Plan */}
-        <Card className="p-6 border-blue-500 bg-blue-900/20 relative">
-          <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
-            <span className="bg-blue-500 text-white px-3 py-1 rounded-full text-xs font-semibold">
-              RECOMMENDED
-            </span>
+        {!isPaymentConfigured && (
+          <div className="bg-yellow-900/20 border border-yellow-600 rounded-lg p-4">
+            <div className="flex items-center gap-3">
+              <AlertCircle className="w-5 h-5 text-yellow-400 flex-shrink-0" />
+              <div>
+                <h4 className="font-semibold text-yellow-400">Payment Service Not Configured</h4>
+                <p className="text-sm text-yellow-300 mt-1">
+                  Paid plans are currently unavailable. Only the free plan can be used.
+                  Contact support to enable payment processing.
+                </p>
+              </div>
+            </div>
           </div>
-          <div className="text-center">
-            <h3 className="text-lg font-semibold mb-2">Pro</h3>
-            <div className="text-3xl font-bold mb-4">$29<span className="text-lg font-normal">/month</span></div>
-            <ul className="text-sm text-slate-300 space-y-2 mb-6">
-              <li>✓ Up to 25 team members</li>
-              <li>✓ Advanced analytics</li>
-              <li>✓ Custom reports</li>
-              <li>✓ Priority support</li>
-            </ul>
-            <Button
-              onClick={handlePaymentSubmit}
-              disabled={isLoading}
-              className="w-full bg-blue-600 hover:bg-blue-700"
-            >
-              Start Pro Trial
-            </Button>
-          </div>
-        </Card>
+        )}
 
-        {/* Enterprise Plan */}
-        <Card className="p-6 border-slate-600 bg-slate-800/50">
-          <div className="text-center">
-            <h3 className="text-lg font-semibold mb-2">Enterprise</h3>
-            <div className="text-3xl font-bold mb-4">$99<span className="text-lg font-normal">/month</span></div>
-            <ul className="text-sm text-slate-300 space-y-2 mb-6">
-              <li>✓ Unlimited team members</li>
-              <li>✓ All Pro features</li>
-              <li>✓ API access</li>
-              <li>✓ Dedicated support</li>
-            </ul>
-            <Button
-              onClick={handlePaymentSubmit}
-              disabled={isLoading}
-              className="w-full bg-slate-600 hover:bg-slate-700"
-            >
-              Contact Sales
-            </Button>
-          </div>
-        </Card>
+        <div className="text-center text-sm text-slate-400">
+          <p>✓ No credit card required for trial</p>
+          <p>✓ Cancel anytime during trial period</p>
+          <p>✓ Upgrade/downgrade at any time</p>
+        </div>
       </div>
-
-      <div className="text-center text-sm text-slate-400">
-        <p>✓ No credit card required for trial</p>
-        <p>✓ Cancel anytime during trial period</p>
-        <p>✓ Upgrade/downgrade at any time</p>
-      </div>
-    </div>
-  );
+    );
+  };
 
   const renderCompleteStep = () => (
     <div className="text-center space-y-6">
@@ -358,5 +418,4 @@ export const OrganizationSignupPage: React.FC = () => {
       </main>
     </div>
   );
-};</content>
-<parameter name="filePath">c:\Users\omen\Downloads\Industrial Management Tracking System\src\app\components\OrganizationSignupPage.tsx
+};
