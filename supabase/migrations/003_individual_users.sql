@@ -64,8 +64,10 @@ CREATE POLICY "Users can update their own profile (limited fields)" ON profiles
     role IS NOT DISTINCT FROM (SELECT role FROM profiles WHERE id = auth.uid())
   );
 
--- Remove the insert policy - profiles are created automatically by trigger
+-- Allow auth users to insert their own profile rows when signing up
 DROP POLICY IF EXISTS "Users can insert their own profile" ON profiles;
+CREATE POLICY "Users can insert their own profile" ON profiles
+  FOR INSERT WITH CHECK (id = auth.uid());
 
 -- Update existing tables to allow null org_id
 DO $$

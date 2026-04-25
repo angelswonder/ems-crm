@@ -142,16 +142,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signUp = useCallback(async (email: string, password: string, fullName: string, userType: string = 'individual') => {
     try {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
+      const { data, error } = await supabase.auth.signUp(
+        {
+          email,
+          password,
+        },
+        {
           data: {
             full_name: fullName,
             user_type: userType,
           },
-        },
-      });
+        }
+      );
 
       if (error) throw error;
 
