@@ -15,6 +15,7 @@ export const IndividualAuthPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
   const [fullName, setFullName] = useState('');
+  const [infoMessage, setInfoMessage] = useState('');
 
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,6 +28,7 @@ export const IndividualAuthPage: React.FC = () => {
         console.log('Attempting signup...');
         const result = await signUp(email, password, fullName);
         console.log('Signup successful:', result);
+        setInfoMessage('Account created successfully. Check your email for a verification link to complete setup.');
         toast.success('Account created! Check your email to verify your account.');
         setIsSignUp(false); // Switch to sign in mode
       } else {
@@ -87,6 +89,11 @@ export const IndividualAuthPage: React.FC = () => {
                   ? 'Join as an individual user' 
                   : 'Sign in to your account'}
               </p>
+              {infoMessage ? (
+                <div className="mt-4 rounded-2xl border border-blue-500/20 bg-blue-500/10 px-4 py-3 text-left text-sm text-blue-200">
+                  {infoMessage}
+                </div>
+              ) : null}
             </div>
 
             {/* Email form */}

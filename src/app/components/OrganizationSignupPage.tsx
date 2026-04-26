@@ -21,6 +21,7 @@ export const OrganizationSignupPage: React.FC = () => {
     adminName: '',
     password: '',
   });
+  const [infoMessage, setInfoMessage] = useState('');
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -47,6 +48,7 @@ export const OrganizationSignupPage: React.FC = () => {
     e.preventDefault();
     if (!validateDetails()) return;
 
+    setInfoMessage('');
     setIsLoading(true);
     try {
       console.log('Starting organization signup...');
@@ -67,6 +69,9 @@ export const OrganizationSignupPage: React.FC = () => {
         'free'
       );
 
+      setInfoMessage(
+        'A verification email has been sent to your admin address. Please verify your email to complete the setup and access your new organization dashboard.'
+      );
       setStep('complete');
       toast.success('Organization created successfully!');
 
@@ -90,6 +95,13 @@ export const OrganizationSignupPage: React.FC = () => {
         <h2 className="text-2xl font-bold mb-2">Create Your Organization</h2>
         <p className="text-slate-400">Set up your team workspace and start your free trial</p>
       </div>
+
+      {infoMessage && (
+        <div className="rounded-xl border border-blue-500/40 bg-blue-500/10 p-4 text-sm text-blue-100 mb-4">
+          <div className="font-semibold">Next step:</div>
+          <p>{infoMessage}</p>
+        </div>
+      )}
 
       <div className="space-y-4">
         <div>

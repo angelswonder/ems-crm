@@ -295,6 +295,10 @@ CREATE POLICY "Users can view their organization" ON organizations
     )
   );
 
+DROP POLICY IF EXISTS "Users can create organizations" ON organizations;
+CREATE POLICY "Users can create organizations" ON organizations
+  FOR INSERT WITH CHECK (true);
+
 DROP POLICY IF EXISTS "Only organization owner can update" ON organizations;
 CREATE POLICY "Only organization owner can update" ON organizations
   FOR UPDATE USING (

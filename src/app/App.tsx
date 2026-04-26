@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
+import { AppProvider } from "./contexts/AppContext";
 import { LoginPage } from "./components/LoginPage";
 import { LandingPage } from "./components/LandingPage";
 import { IndividualAuthPage } from "./components/IndividualAuthPage";
@@ -7,6 +8,7 @@ import { OrganizationSignupPage } from "./components/OrganizationSignupPage";
 import { IndividualDashboard } from "./components/IndividualDashboard";
 import { AuthCallback } from "./components/AuthCallback";
 import { Layout } from "./components/Layout";
+import { SettingsProfile } from "./components/SettingsProfile";
 import { PrivacyPolicyPage } from "./components/PrivacyPolicyPage";
 import { TermsOfServicePage } from "./components/TermsOfServicePage";
 import { ContactPage } from "./components/ContactPage";
@@ -24,7 +26,8 @@ function AppInner() {
         element={user ? <Navigate to="/app" replace /> : <LoginPage />}
       />
       <Route path="/auth/callback" element={<AuthCallback />} />
-      <Route path="/individual/dashboard" element={<IndividualDashboard />} />
+      <Route path="/individual/dashboard" element={<Layout />} />
+      <Route path="/individual/settings" element={<SettingsProfile />} />
       <Route
         path="/app/*"
         element={
@@ -46,9 +49,11 @@ function AppInner() {
 export default function App() {
   return (
     <AuthProvider>
-      <BrowserRouter>
-        <AppInner />
-      </BrowserRouter>
+      <AppProvider>
+        <BrowserRouter>
+          <AppInner />
+        </BrowserRouter>
+      </AppProvider>
     </AuthProvider>
   );
 }
