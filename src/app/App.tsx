@@ -13,10 +13,22 @@ import { PrivacyPolicyPage } from "./components/PrivacyPolicyPage";
 import { TermsOfServicePage } from "./components/TermsOfServicePage";
 import { ContactPage } from "./components/ContactPage";
 
-function AppInner() {
+// Authenticated app component - only loaded when needed
+function AuthApp() {
+  return (
+    <AuthProvider>
+      <AppProvider>
+        <AuthRoutes />
+      </AppProvider>
+    </AuthProvider>
+  );
+}
+
+// Auth routes component - handles all authenticated/auth-related routes
+function AuthRoutes() {
   const { user, loading } = useAuth();
 
-  // Show nothing while auth is loading
+  // Show loading while auth is initializing
   if (loading) {
     return (
       <div className="flex h-screen items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
@@ -36,7 +48,6 @@ function AppInner() {
 
   return (
     <Routes>
-      <Route path="/" element={user ? <Navigate to="/app" replace /> : <LandingPage />} />
       <Route path="/auth/individual-login" element={<IndividualAuthPage />} />
       <Route path="/auth/organization-signup" element={<OrganizationSignupPage />} />
       <Route
@@ -56,9 +67,7 @@ function AppInner() {
           )
         }
       />
-      <Route path="/privacy" element={<PrivacyPolicyPage />} />
-      <Route path="/terms" element={<TermsOfServicePage />} />
-      <Route path="/contact" element={<ContactPage />} />
+      {/* Catch all for auth routes - redirect to landing */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
@@ -66,12 +75,17 @@ function AppInner() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <AppProvider>
-        <BrowserRouter>
-          <AppInner />
-        </BrowserRouter>
-      </AppProvider>
-    </AuthProvider>
+    <BrowserRouter>
+      <Routes>
+        {/* Landing page - no auth context */}
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/privacy" element={<PrivacyPolicyPage />} />
+        <Route path="/terms" element={<TermsOfServicePage />} />
+        <Route path="/contact" element={<ContactPage />} />
+
+        {/* All other routes use auth context */}
+        <Route path="/*" element={<AuthApp />} />
+      </Routes>
+    </BrowserRouter>
   );
 }
