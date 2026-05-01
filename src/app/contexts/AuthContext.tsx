@@ -129,12 +129,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, newSession) => {
+      console.log('Auth state changed:', event, 'User:', newSession?.user?.id);
       setSession(newSession);
       setUser(newSession?.user || null);
 
       if (event === 'SIGNED_OUT') {
         setProfile(null);
         setTenant(null);
+        localStorage.removeItem('currentTenantId');
+        localStorage.removeItem('auth_token');
+        sessionStorage.clear();
       }
 
       if ((event === 'SIGNED_IN' || event === 'USER_UPDATED' || event === 'TOKEN_REFRESHED') && newSession?.user) {
@@ -189,6 +193,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signUp = useCallback(async (email: string, password: string, fullName: string, userType: string = 'individual') => {
     try {
+      console.log('Starting signup:', { email, fullName, userType });
+      
       // Use production URL for Vercel deployment, fallback to current origin
       const baseUrl = import.meta.env.PROD 
         ? 'https://ems-crm.vercel.app' 
@@ -206,7 +212,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         },
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Signup error:', error);
+        throw error;
+      }
+
+      console.log('Signup successful:', { userId: data?.user?.id, hasSession: !!data?.session });
 
       if (data?.session?.user) {
         setSession(data.session);
@@ -283,6 +294,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
+      
+      // Clear all auth-related state and localStorage
+      setSession(null);
+      setUser(null);
+      setProfile(null);
+      setTenant(null);
+      localStorage.removeItem('currentTenantId');
+      localStorage.removeItem('auth_token');
+      sessionStorage.clear();
     } catch (error) {
       console.error('Sign out error:', error);
       throw error;
@@ -314,6 +334,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!currentUserId) throw new Error('User not authenticated');
 
     try {
+      console.log('Creating organization:', { name, slug, currentUserId });
+      
       // Create organization
       const { data: org, error: orgError } = await supabase
         .from('organizations')
@@ -327,19 +349,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .select()
         .single();
 
-      if (orgError) throw orgError;
+      if (orgError) {
+        console.error('Organization insert failed:', orgError);
+        throw new Error(`Failed to create organization: ${orgError.message}`);
+      }
+
+      console.log('Organization created:', org.id);
 
       // Create or upsert profile linking user to org
-      const { error: profileError } = await supabase
+      console.log('Updating profile with org_id:', org.id);
+      const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .upsert([{
           id: currentUserId,
           org_id: org.id,
           full_name: ownerFullName || user?.user_metadata?.full_name || '',
-          role: 'owner', // Creator is owner
-        }], { onConflict: 'id' });
+          role: 'owner',
+          email: ownerEmail || user?.email || '',
+        }], { onConflict: 'id' })
+        .select()
+        .single();
 
-      if (profileError) throw profileError;
+      if (profileError) {
+        console.error('Profile upsert failed:', profileError);
+        throw new Error(`Failed to link profile to organization: ${profileError.message}`);
+      }
+
+      console.log('Profile updated successfully');
+
+      // Update local state
+      setTenant(org as Tenant);
 
       return org as Tenant;
     } catch (error) {

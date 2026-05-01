@@ -24,6 +24,7 @@ export const OrganizationSignupPage: React.FC = () => {
   const [infoMessage, setInfoMessage] = useState('');
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [debugError, setDebugError] = useState('');
 
   const validateDetails = () => {
     const errs: Record<string, string> = {};
@@ -49,6 +50,7 @@ export const OrganizationSignupPage: React.FC = () => {
     if (!validateDetails()) return;
 
     setInfoMessage('');
+    setDebugError('');
     setIsLoading(true);
     try {
       console.log('Starting organization signup...');
@@ -59,7 +61,7 @@ export const OrganizationSignupPage: React.FC = () => {
         throw new Error('Signup failed - no user ID returned');
       }
 
-      console.log('Creating organization...');
+      console.log('Creating organization with user ID:', signUpResult.user.id);
       await createOrganization(
         orgData.name,
         orgData.slug,
@@ -69,6 +71,7 @@ export const OrganizationSignupPage: React.FC = () => {
         'free'
       );
 
+      console.log('Organization created successfully');
       setInfoMessage(
         'A verification email has been sent to your admin address. Please verify your email to complete the setup and access your new organization dashboard.'
       );
@@ -81,7 +84,10 @@ export const OrganizationSignupPage: React.FC = () => {
       }, 2000);
     } catch (error: any) {
       console.error('Organization creation error:', error);
-      toast.error(error.message || 'Failed to create organization');
+      const errorMessage = error.message || error.details?.message || 'Failed to create organization';
+      console.error('Full error details:', { error });
+      setDebugError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -100,6 +106,13 @@ export const OrganizationSignupPage: React.FC = () => {
         <div className="rounded-xl border border-blue-500/40 bg-blue-500/10 p-4 text-sm text-blue-100 mb-4">
           <div className="font-semibold">Next step:</div>
           <p>{infoMessage}</p>
+        </div>
+      )}
+
+      {debugError && (
+        <div className="rounded-xl border border-red-500/40 bg-red-500/10 p-4 text-sm text-red-100 mb-4">
+          <div className="font-semibold">Error:</div>
+          <p>{debugError}</p>
         </div>
       )}
 

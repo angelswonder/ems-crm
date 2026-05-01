@@ -26,7 +26,7 @@ function AuthApp() {
 
 // Auth routes component - handles all authenticated/auth-related routes
 function AuthRoutes() {
-  const { user, loading } = useAuth();
+  const { user, loading, profile } = useAuth();
 
   // Show loading while auth is initializing
   if (loading) {
@@ -46,6 +46,10 @@ function AuthRoutes() {
     );
   }
 
+  // Determine if user is an individual or organization user based on metadata and profile
+  const isIndividualUser = user?.user_metadata?.user_type === 'individual' || (user && !profile?.org_id);
+  const isOrgUser = user?.user_metadata?.user_type === 'organization' || (user && profile?.org_id);
+
   return (
     <Routes>
       <Route path="/auth/individual-login" element={<IndividualAuthPage />} />
@@ -55,18 +59,24 @@ function AuthRoutes() {
         element={user ? <Navigate to="/app" replace /> : <LoginPage />}
       />
       <Route path="/auth/callback" element={<AuthCallback />} />
-      <Route path="/individual/dashboard" element={<IndividualDashboard />} />
-      <Route path="/individual/settings" element={<SettingsProfile />} />
+      
+      {/* Route based on user type */}
+      <Route path="/individual/dashboard" element={isIndividualUser && user ? <IndividualDashboard /> : user && isOrgUser ? <Navigate to="/app" replace /> : <Navigate to="/auth/individual-login" replace />} />
+      <Route path="/individual/settings" element={isIndividualUser && user ? <SettingsProfile /> : user && isOrgUser ? <Navigate to="/app" replace /> : <Navigate to="/auth/individual-login" replace />} />
+      
       <Route
         path="/app/*"
         element={
-          user ? (
+          isOrgUser && user ? (
             <Layout />
+          ) : user && isIndividualUser ? (
+            <Navigate to="/individual/dashboard" replace />
           ) : (
             <Navigate to="/auth/organization-login" replace />
           )
         }
       />
+      
       {/* Catch all for auth routes - redirect to landing */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
