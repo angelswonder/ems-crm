@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { createClient } from '@supabase/supabase-js';
+import { getSupabaseClient, isSupabaseConfigured } from '../../lib/supabaseClient';
 import {
   Globe,
   Users,
@@ -17,10 +17,7 @@ import {
 import { useAuth } from '../../contexts/AuthContext';
 import { toast } from 'sonner';
 
-const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL || '',
-  import.meta.env.VITE_SUPABASE_ANON_KEY || ''
-);
+const supabase = isSupabaseConfigured ? getSupabaseClient() : null;
 
 interface OrgStats {
   id: string;

@@ -5,12 +5,9 @@ import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Alert, AlertDescription } from "./ui/alert";
 import { Shield, Mail, Users, Key, AlertCircle, CheckCircle2 } from 'lucide-react';
-import { createClient } from '@supabase/supabase-js';
+import { getSupabaseClient, isSupabaseConfigured } from '../../lib/supabaseClient';
 
-const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL || '',
-  import.meta.env.VITE_SUPABASE_ANON_KEY || ''
-);
+const supabase = isSupabaseConfigured ? getSupabaseClient() : null;
 
 interface AdminUser {
   id: string;

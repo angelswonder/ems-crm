@@ -1,13 +1,10 @@
 import React, { useState, useCallback } from 'react';
-import { createClient } from '@supabase/supabase-js';
 import { Mail, Send, Loader2, Copy, Check } from 'lucide-react';
+import { getSupabaseClient, isSupabaseConfigured } from '../../lib/supabaseClient';
 import { toast } from 'sonner';
 import { useAuth } from '../../contexts/AuthContext';
 
-const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL || '',
-  import.meta.env.VITE_SUPABASE_ANON_KEY || ''
-);
+const supabase = isSupabaseConfigured ? getSupabaseClient() : null;
 
 interface Invitation {
   id: string;

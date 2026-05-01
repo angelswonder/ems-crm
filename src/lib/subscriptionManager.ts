@@ -3,13 +3,10 @@
  * Handle subscription logic, trial logic, and billing cycles
  */
 
-import { createClient } from '@supabase/supabase-js';
+import { getSupabaseClient, isSupabaseConfigured } from './supabaseClient';
 import type { Tenant } from '../contexts/AuthContext';
 
-const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL || '',
-  import.meta.env.VITE_SUPABASE_ANON_KEY || ''
-);
+const supabase = isSupabaseConfigured ? getSupabaseClient() : null;
 
 /**
  * Check if organization is on trial

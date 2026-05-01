@@ -1,14 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { createClient } from '@supabase/supabase-js';
 import { Button } from './ui/button';
+import { getSupabaseClient, isSupabaseConfigured } from '../../lib/supabaseClient';
 import { Card } from './ui/card';
 import { ArrowLeft, Users, Database, AlertCircle, CheckCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
-const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL || '',
-  import.meta.env.VITE_SUPABASE_ANON_KEY || ''
-);
+const supabase = isSupabaseConfigured ? getSupabaseClient() : null;
 
 export const DebugPage: React.FC = () => {
   const navigate = useNavigate();
@@ -22,6 +19,12 @@ export const DebugPage: React.FC = () => {
     const fetchData = async () => {
       try {
         setLoading(true);
+
+        if (!supabase) {
+          setError('Supabase is not configured. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.');
+          setLoading(false);
+          return;
+        }
 
         // Try to get auth users (this will fail without service role, but let's try)
         try {

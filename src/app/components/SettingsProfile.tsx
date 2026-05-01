@@ -25,13 +25,10 @@ import {
   Code2,
 } from "lucide-react";
 import { createVerificationCode, sendVerificationEmail, verifyCode, getVerificationStatus } from "./crm/emailApi";
-import { createClient } from '@supabase/supabase-js';
+import { getSupabaseClient, isSupabaseConfigured } from '../../lib/supabaseClient';
 import type { VerificationCode } from "./crm/emailApi";
 
-const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL || '',
-  import.meta.env.VITE_SUPABASE_ANON_KEY || ''
-);
+const supabase = isSupabaseConfigured ? getSupabaseClient() : null;
 
 const STATUS_OPTIONS = [
   { value: "active",   label: "Active",   dot: "bg-green-500" },

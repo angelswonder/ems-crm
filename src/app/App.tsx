@@ -6,8 +6,12 @@ import { LandingPage } from "./components/LandingPage";
 import { IndividualAuthPage } from "./components/IndividualAuthPage";
 import { OrganizationSignupPage } from "./components/OrganizationSignupPage";
 import { IndividualDashboard } from "./components/IndividualDashboard";
+import { SettingsProfile } from "./components/SettingsProfile";
 import { AuthCallback } from "./components/AuthCallback";
 import { Layout } from "./components/Layout";
+import { PrivacyPolicyPage } from "./components/PrivacyPolicyPage";
+import { TermsOfServicePage } from "./components/TermsOfServicePage";
+import { ContactPage } from "./components/ContactPage";
 import { DebugPage } from "./components/DebugPage";
 
 // Authenticated app component - only loaded when needed

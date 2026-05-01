@@ -1,12 +1,9 @@
 // Email API Database for 2FA Verification
 // Now uses Supabase backend instead of localStorage
 
-import { createClient } from '@supabase/supabase-js';
+import { getSupabaseClient, isSupabaseConfigured } from '../../../lib/supabaseClient';
 
-const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL || '',
-  import.meta.env.VITE_SUPABASE_ANON_KEY || ''
-);
+const supabase = isSupabaseConfigured ? getSupabaseClient() : null;
 
 export interface VerificationCode {
   id: string;

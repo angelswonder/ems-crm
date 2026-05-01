@@ -1,23 +1,8 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
-import { createClient } from '@supabase/supabase-js';
+import { getSupabaseClient, isSupabaseConfigured } from '../../lib/supabaseClient';
 import type { User, AuthSession } from '@supabase/supabase-js';
 
-const normalizeSupabaseUrl = (url: string) => {
-  if (!url) return url;
-  const cleaned = url.trim().replace(/\/+$|\s+$/g, '');
-
-  try {
-    const parsedUrl = new URL(cleaned);
-    return `${parsedUrl.protocol}//${parsedUrl.host}`;
-  } catch {
-    return cleaned.replace(/\/(auth|rest)\/v1.*$/i, '');
-  }
-};
-
-const supabase = createClient(
-  normalizeSupabaseUrl(import.meta.env.VITE_SUPABASE_URL || ''),
-  import.meta.env.VITE_SUPABASE_ANON_KEY || ''
-);
+const supabase = isSupabaseConfigured ? getSupabaseClient() : null;
 
 export interface Tenant {
   id: string;
@@ -113,6 +98,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     const initializeAuth = async () => {
       try {
+        if (!supabase) {
+          console.warn('Supabase is not configured; skipping auth initialization.');
+          return;
+        }
+
         const { data: { session } } = await supabase.auth.getSession();
         setSession(session);
         setUser(session?.user || null);
@@ -129,25 +119,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     initializeAuth();
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, newSession) => {
-      console.log('Auth state changed:', event, 'User:', newSession?.user?.id);
-      setSession(newSession);
-      setUser(newSession?.user || null);
+    let subscription: { unsubscribe: () => void } | undefined;
 
-      if (event === 'SIGNED_OUT') {
-        setProfile(null);
-        setTenant(null);
-        localStorage.removeItem('currentTenantId');
-        localStorage.removeItem('auth_token');
-        sessionStorage.clear();
-      }
+    if (supabase) {
+      const {
+        data: { subscription: authSubscription },
+      } = supabase.auth.onAuthStateChange(async (event, newSession) => {
+        console.log('Auth state changed:', event, 'User:', newSession?.user?.id);
+        setSession(newSession);
+        setUser(newSession?.user || null);
 
-      if ((event === 'SIGNED_IN' || event === 'USER_UPDATED' || event === 'TOKEN_REFRESHED') && newSession?.user) {
-        await loadUserProfile(newSession.user);
-      }
-    });
+        if (event === 'SIGNED_OUT') {
+          setProfile(null);
+          setTenant(null);
+          localStorage.removeItem('currentTenantId');
+          localStorage.removeItem('auth_token');
+          sessionStorage.clear();
+        }
+
+        if ((event === 'SIGNED_IN' || event === 'USER_UPDATED' || event === 'TOKEN_REFRESHED') && newSession?.user) {
+          await loadUserProfile(newSession.user);
+        }
+      });
+
+      subscription = authSubscription;
+    }
 
     return () => subscription?.unsubscribe();
   }, []);
