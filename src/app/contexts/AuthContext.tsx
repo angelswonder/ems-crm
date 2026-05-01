@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import type { User, AuthSession } from '@supabase/supabase-js';
 
@@ -69,6 +69,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [tenant, setTenant] = useState<Tenant | null>(null);
   const [session, setSession] = useState<AuthSession | null>(null);
   const [loading, setLoading] = useState(true);
+  const sessionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Initialize auth state from Supabase
   useEffect(() => {
@@ -121,53 +122,63 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     initializeAuth();
 
-    // Subscribe to auth changes
+    // Simple auth state change listener - only handle sign out events
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, newSession) => {
-      setSession(newSession);
-      setUser(newSession?.user || null);
-
       if (event === 'SIGNED_OUT') {
+        setSession(null);
+        setUser(null);
         setProfile(null);
         setTenant(null);
-      } else if (newSession?.user) {
-        // Refetch profile on auth change
-        const { data: profileData, error: profileError } = await supabase
-          .from('profiles')
-          .select('*, organizations(*)')
-          .eq('id', newSession.user.id)
-          .single();
-
-        if (profileError) {
-          console.error('Error refetching profile:', profileError);
-          // For individual users, create a temporary profile if fetch fails
-          if (newSession.user.user_metadata?.user_type === 'individual') {
-            setProfile({
-              id: newSession.user.id,
-              org_id: null,
-              full_name: newSession.user.user_metadata?.full_name || 'User',
-              avatar_url: newSession.user.user_metadata?.avatar_url,
-              role: 'manager',
-              email: newSession.user.email || '',
-              theme_preference: 'dark',
-              email_notifications: true,
-            });
-            setTenant(null);
-          }
-        } else if (profileData) {
-          setProfile({
-            ...profileData,
-            email: newSession.user.email || '',
-          });
-          // Only set tenant if org_id is not null
-          setTenant(profileData.org_id ? profileData.organizations : null);
-        }
       }
+      // Don't refetch profile on every auth change - only on explicit sign out
     });
 
     return () => subscription?.unsubscribe();
   }, []);
+
+  // Session timeout mechanism - automatically log out after 24 hours of inactivity
+  useEffect(() => {
+    const resetSessionTimeout = () => {
+      // Clear existing timeout
+      if (sessionTimeoutRef.current) {
+        clearTimeout(sessionTimeoutRef.current);
+      }
+
+      // Only set timeout if user is logged in
+      if (user) {
+        sessionTimeoutRef.current = setTimeout(async () => {
+          console.log('Session timeout - logging out user');
+          await supabase.auth.signOut();
+          setSession(null);
+          setUser(null);
+          setProfile(null);
+          setTenant(null);
+        }, 24 * 60 * 60 * 1000); // 24 hours
+      }
+    };
+
+    resetSessionTimeout();
+
+    // Reset timeout on user activity
+    const handleUserActivity = () => {
+      resetSessionTimeout();
+    };
+
+    if (user) {
+      window.addEventListener('mousedown', handleUserActivity);
+      window.addEventListener('keydown', handleUserActivity);
+    }
+
+    return () => {
+      window.removeEventListener('mousedown', handleUserActivity);
+      window.removeEventListener('keydown', handleUserActivity);
+      if (sessionTimeoutRef.current) {
+        clearTimeout(sessionTimeoutRef.current);
+      }
+    };
+  }, [user]);
 
   const signUp = useCallback(async (email: string, password: string, fullName: string, userType: string = 'individual') => {
     try {

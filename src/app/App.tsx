@@ -23,6 +23,12 @@ function AppInner() {
         <div className="text-center space-y-4">
           <div className="mx-auto w-8 h-8 border-4 border-blue-600/30 border-t-blue-600 rounded-full animate-spin" />
           <p className="text-slate-300">Initializing application...</p>
+          <button
+            onClick={() => window.location.href = '/'}
+            className="text-xs text-slate-400 hover:text-slate-200 underline mt-4"
+          >
+            Reset to Landing Page (dev)
+          </button>
         </div>
       </div>
     );
