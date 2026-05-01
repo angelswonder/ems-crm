@@ -58,14 +58,23 @@ export const IndividualDashboard: React.FC = () => {
           .eq('id', user.id)
           .single();
 
-        if (error) throw error;
-
-        setProfile({
-          id: data.id,
-          full_name: data.full_name || user.user_metadata?.full_name || 'User',
-          email: user.email || '',
-          role: data.role || 'manager',
-        });
+        if (error) {
+          console.warn('Profile fetch failed, using user metadata:', error);
+          // Fallback to user metadata if profile fetch fails
+          setProfile({
+            id: user.id,
+            full_name: user.user_metadata?.full_name || 'User',
+            email: user.email || '',
+            role: user.user_metadata?.user_type === 'individual' ? 'manager' : 'owner',
+          });
+        } else {
+          setProfile({
+            id: data.id,
+            full_name: data.full_name || user.user_metadata?.full_name || 'User',
+            email: user.email || '',
+            role: data.role || 'manager',
+          });
+        }
 
         setEnergyData(mockEnergyData);
       } catch (error: any) {

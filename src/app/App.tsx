@@ -26,7 +26,7 @@ function AppInner() {
         element={user ? <Navigate to="/app" replace /> : <LoginPage />}
       />
       <Route path="/auth/callback" element={<AuthCallback />} />
-      <Route path="/individual/dashboard" element={<Layout />} />
+      <Route path="/individual/dashboard" element={<IndividualDashboard />} />
       <Route path="/individual/settings" element={<SettingsProfile />} />
       <Route
         path="/app/*"

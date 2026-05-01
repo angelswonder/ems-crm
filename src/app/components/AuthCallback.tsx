@@ -27,7 +27,10 @@ export const AuthCallback: React.FC = () => {
         const userType = query.get('user_type');
 
         if (session) {
-          if (userType === 'individual' || actionType === 'signup') {
+          // Check user type from session metadata or URL params
+          const userType = session.user?.user_metadata?.user_type || userType || 'individual';
+          
+          if (userType === 'individual') {
             navigate('/individual/dashboard');
           } else {
             navigate('/app');

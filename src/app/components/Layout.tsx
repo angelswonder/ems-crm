@@ -38,7 +38,15 @@ export function Layout() {
   };
 
   if (!profile) {
-    return <div>Loading...</div>;
+    return (
+      <div className="flex h-screen items-center justify-center bg-background">
+        <div className="text-center space-y-4">
+          <div className="mx-auto w-8 h-8 border-4 border-blue-600/30 border-t-blue-600 rounded-full animate-spin" />
+          <p className="text-slate-400">Loading your dashboard...</p>
+          <p className="text-xs text-slate-500">If this takes too long, try refreshing the page</p>
+        </div>
+      </div>
+    );
   }
 
   return (

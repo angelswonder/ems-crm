@@ -89,7 +89,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
           if (profileError) {
             console.error('Error fetching profile:', profileError);
-            // If no profile exists, don't set profile/tenant
+            // For individual users, create a temporary profile if fetch fails
+            if (session.user.user_metadata?.user_type === 'individual') {
+              setProfile({
+                id: session.user.id,
+                org_id: null,
+                full_name: session.user.user_metadata?.full_name || 'User',
+                avatar_url: session.user.user_metadata?.avatar_url,
+                role: 'manager',
+                email: session.user.email || '',
+                theme_preference: 'dark',
+                email_notifications: true,
+              });
+              setTenant(null);
+            }
           } else if (profileData) {
             setProfile({
               ...profileData,
@@ -120,13 +133,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setTenant(null);
       } else if (newSession?.user) {
         // Refetch profile on auth change
-        const { data: profileData } = await supabase
+        const { data: profileData, error: profileError } = await supabase
           .from('profiles')
           .select('*, organizations(*)')
           .eq('id', newSession.user.id)
           .single();
 
-        if (profileData) {
+        if (profileError) {
+          console.error('Error refetching profile:', profileError);
+          // For individual users, create a temporary profile if fetch fails
+          if (newSession.user.user_metadata?.user_type === 'individual') {
+            setProfile({
+              id: newSession.user.id,
+              org_id: null,
+              full_name: newSession.user.user_metadata?.full_name || 'User',
+              avatar_url: newSession.user.user_metadata?.avatar_url,
+              role: 'manager',
+              email: newSession.user.email || '',
+              theme_preference: 'dark',
+              email_notifications: true,
+            });
+            setTenant(null);
+          }
+        } else if (profileData) {
           setProfile({
             ...profileData,
             email: newSession.user.email || '',
@@ -142,11 +171,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signUp = useCallback(async (email: string, password: string, fullName: string, userType: string = 'individual') => {
     try {
+      // Use production URL for Vercel deployment, fallback to current origin
+      const baseUrl = import.meta.env.PROD 
+        ? 'https://ems-crm.vercel.app' 
+        : window.location.origin;
+      
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          emailRedirectTo: `${baseUrl}/auth/callback`,
           data: {
             full_name: fullName,
             user_type: userType,
@@ -187,10 +221,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signInWithMagicLink = useCallback(async (email: string) => {
     try {
+      // Use production URL for Vercel deployment, fallback to current origin
+      const baseUrl = import.meta.env.PROD 
+        ? 'https://ems-crm.vercel.app' 
+        : window.location.origin;
+      
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          emailRedirectTo: `${baseUrl}/auth/callback`,
         },
       });
 

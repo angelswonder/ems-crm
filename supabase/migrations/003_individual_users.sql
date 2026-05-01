@@ -53,7 +53,7 @@ DROP POLICY IF EXISTS "Users can view profiles in their organization" ON profile
 DROP POLICY IF EXISTS "Users can view profiles in their organization or their own profile" ON profiles;
 CREATE POLICY "Users can view profiles in their organization or their own profile" ON profiles
   FOR SELECT USING (
-    auth.role() = 'authenticated'
+    id = auth.uid()
     OR org_id IS NULL
   );
 
