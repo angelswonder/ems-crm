@@ -1,6 +1,9 @@
 -- Secure Super Admin Promotion Function
 -- This function can be called from Edge Functions with proper authentication
 
+ALTER TABLE profiles
+ADD COLUMN IF NOT EXISTS is_super_admin boolean DEFAULT false;
+
 CREATE OR REPLACE FUNCTION promote_to_super_admin(user_uuid UUID)
 RETURNS BOOLEAN
 LANGUAGE plpgsql
@@ -8,19 +11,21 @@ SECURITY DEFINER
 AS $$
 DECLARE
   current_user_role TEXT;
+  current_user_is_super_admin BOOLEAN;
 BEGIN
   -- Only allow super admins to promote others
-  SELECT role INTO current_user_role
+  SELECT role, is_super_admin INTO current_user_role, current_user_is_super_admin
   FROM profiles
   WHERE id = auth.uid();
 
-  IF current_user_role != 'owner' OR (SELECT org_id FROM profiles WHERE id = auth.uid()) != 'super-admin' THEN
+  IF current_user_role != 'owner' OR current_user_is_super_admin IS NOT TRUE THEN
     RAISE EXCEPTION 'Access denied: Only super admins can promote users';
   END IF;
 
   -- Promote the user
   UPDATE profiles
-  SET org_id = 'super-admin', role = 'owner'
+  SET is_super_admin = TRUE,
+      role = 'owner'
   WHERE id = user_uuid;
 
   -- Check if update was successful

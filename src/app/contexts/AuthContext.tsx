@@ -36,6 +36,7 @@ export interface UserProfile {
   email: string;
   theme_preference: 'light' | 'dark';
   email_notifications: boolean;
+  is_super_admin?: boolean;
 }
 
 interface AuthContextType {
@@ -91,6 +92,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             email: supabaseUser.email || '',
             theme_preference: 'dark',
             email_notifications: true,
+            is_super_admin: false,
           });
           setTenant(null);
         }
@@ -98,6 +100,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setProfile({
           ...profileData,
           email: supabaseUser.email || '',
+          is_super_admin: profileData.is_super_admin || false,
         });
         setTenant(profileData.org_id ? profileData.organizations : null);
       }

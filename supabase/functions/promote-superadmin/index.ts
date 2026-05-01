@@ -46,7 +46,7 @@ serve(async (req) => {
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .update({
-        org_id: 'super-admin',
+        is_super_admin: true,
         role: 'owner',
         updated_at: new Date().toISOString(),
       })

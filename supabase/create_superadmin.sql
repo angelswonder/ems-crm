@@ -29,8 +29,8 @@
 -- SECURE METHOD 1: Direct SQL (requires service role)
 -- Replace 'user-uuid-here' with the actual user UUID from auth.users
 -- UPDATE profiles
--- SET org_id = 'super-admin', role = 'owner', updated_at = NOW()
--- WHERE id = 'user-uuid-here';
+-- SET is_super_admin = TRUE, role = 'owner', updated_at = NOW()
+-- WHERE id = 'ab3ebfad-e1d2-4772-ab70-0ac6cd9e210c';
 
 -- SECURE METHOD 2: Using the Edge Function (recommended for production)
 -- Deploy the promote-superadmin function first, then call it:
@@ -44,7 +44,7 @@
 -- ============================================================================
 
 -- Check that the user now has super admin privileges
--- SELECT id, org_id, role, full_name, email FROM profiles WHERE org_id = 'super-admin';
+-- SELECT id, is_super_admin, role, full_name, email FROM profiles WHERE is_super_admin = TRUE;
 
 -- ============================================================================
 -- STEP 4: TEST SUPER ADMIN ACCESS
