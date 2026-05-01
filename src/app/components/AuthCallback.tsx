@@ -24,11 +24,11 @@ export const AuthCallback: React.FC = () => {
         const session = sessionResponse?.data?.session || (await supabase.auth.getSession()).data.session;
         const query = new URLSearchParams(window.location.search);
         const actionType = query.get('type');
-        const userType = query.get('user_type');
+        const queryUserType = query.get('user_type');
 
         if (session) {
           // Check user type from session metadata or URL params
-          const userType = session.user?.user_metadata?.user_type || userType || 'individual';
+          const userType = session.user?.user_metadata?.user_type || queryUserType || 'individual';
           
           if (userType === 'individual') {
             navigate('/individual/dashboard');

@@ -1,23 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { createClient } from '@supabase/supabase-js';
+import { useAuth } from '../contexts/AuthContext';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from 'recharts';
 import { LogOut, Settings, TrendingUp, Zap, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
-
-const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL || '',
-  import.meta.env.VITE_SUPABASE_ANON_KEY || ''
-);
-
-interface UserProfile {
-  id: string;
-  full_name: string;
-  email: string;
-  role: string;
-}
 
 interface EnergyData {
   timestamp: string;
@@ -27,8 +15,7 @@ interface EnergyData {
 
 export const IndividualDashboard: React.FC = () => {
   const navigate = useNavigate();
-  const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { user, profile, loading, signOut } = useAuth();
   const [energyData, setEnergyData] = useState<EnergyData[]>([]);
 
   // Mock data for demonstration
@@ -43,54 +30,19 @@ export const IndividualDashboard: React.FC = () => {
   ];
 
   useEffect(() => {
-    const fetchProfile = async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        
-        if (!user) {
-          navigate('/auth/individual-login');
-          return;
-        }
+    setEnergyData(mockEnergyData);
+  }, []);
 
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', user.id)
-          .single();
-
-        if (error) {
-          console.warn('Profile fetch failed, using user metadata:', error);
-          // Fallback to user metadata if profile fetch fails
-          setProfile({
-            id: user.id,
-            full_name: user.user_metadata?.full_name || 'User',
-            email: user.email || '',
-            role: user.user_metadata?.user_type === 'individual' ? 'manager' : 'owner',
-          });
-        } else {
-          setProfile({
-            id: data.id,
-            full_name: data.full_name || user.user_metadata?.full_name || 'User',
-            email: user.email || '',
-            role: data.role || 'manager',
-          });
-        }
-
-        setEnergyData(mockEnergyData);
-      } catch (error: any) {
-        toast.error('Failed to load profile');
-        console.error(error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchProfile();
-  }, [navigate]);
+  // Redirect if not logged in
+  useEffect(() => {
+    if (!loading && !user) {
+      navigate('/auth/individual-login');
+    }
+  }, [user, loading, navigate]);
 
   const handleLogout = async () => {
     try {
-      await supabase.auth.signOut();
+      await signOut();
       navigate('/');
       toast.success('Logged out successfully');
     } catch (error: any) {

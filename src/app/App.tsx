@@ -14,7 +14,19 @@ import { TermsOfServicePage } from "./components/TermsOfServicePage";
 import { ContactPage } from "./components/ContactPage";
 
 function AppInner() {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
+
+  // Show nothing while auth is loading
+  if (loading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+        <div className="text-center space-y-4">
+          <div className="mx-auto w-8 h-8 border-4 border-blue-600/30 border-t-blue-600 rounded-full animate-spin" />
+          <p className="text-slate-300">Initializing application...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <Routes>

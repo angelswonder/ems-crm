@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { Sidebar } from "./Sidebar";
 import { Dashboard } from "./Dashboard";
@@ -13,8 +13,21 @@ import { EmailAdminPage } from "./EmailAdminPage";
 import { Toaster } from "sonner";
 
 export function Layout() {
-  const { profile, tenant } = useAuth();
+  const { profile, tenant, loading } = useAuth();
   const [currentPage, setCurrentPage] = useState("dashboard");
+  const [loadingTimeout, setLoadingTimeout] = useState(false);
+
+  // Set a timeout for profile loading to prevent indefinite loading
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      if (!profile) {
+        console.warn('Profile loading timeout - using fallback');
+        setLoadingTimeout(true);
+      }
+    }, 5000);
+
+    return () => clearTimeout(timeout);
+  }, [profile]);
 
   // For now, assume all org users have access to all sections
   // TODO: Implement proper role-based permissions
@@ -37,7 +50,7 @@ export function Layout() {
     }
   };
 
-  if (!profile) {
+  if (!profile && !loadingTimeout) {
     return (
       <div className="flex h-screen items-center justify-center bg-background">
         <div className="text-center space-y-4">
