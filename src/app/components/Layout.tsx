@@ -10,6 +10,7 @@ import { SettingsProfile } from "./SettingsProfile";
 import { Messaging } from "./Messaging";
 import { CRMHub } from "./crm/CRMHub";
 import { EmailAdminPage } from "./EmailAdminPage";
+import { SuperAdminDashboard } from "./admin/SuperAdminDashboard";
 import { Toaster } from "sonner";
 
 export function Layout() {
@@ -36,6 +37,10 @@ export function Layout() {
   const safePage = userPermissions.includes(currentPage) ? currentPage : "dashboard";
 
   const renderContent = () => {
+    if (safePage === "dashboard" && profile?.is_super_admin) {
+      return <SuperAdminDashboard />;
+    }
+
     switch (safePage) {
       case "dashboard":      return <Dashboard />;
       case "analytics":     return <Analytics />;

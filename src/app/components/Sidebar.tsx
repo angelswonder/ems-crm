@@ -21,7 +21,7 @@ import {
   Mail,
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
-import { SectionId } from "../contexts/AppContext";
+import { useApp, SectionId } from "../contexts/AppContext";
 
 interface SidebarProps {
   currentPage: string;
@@ -55,6 +55,8 @@ const ROLE_GRADIENT: Record<string, string> = {
 
 export function Sidebar({ currentPage, onPageChange }: SidebarProps) {
   const { profile, signOut } = useAuth();
+  const { currentUser, notifications } = useApp();
+  const unreadCount = notifications.filter((n) => !n.read).length;
   const [isExpanded, setIsExpanded] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [form, setForm] = useState({ name: "", address: "", lat: "", lng: "", status: "active" as "active" | "inactive" | "warning" });

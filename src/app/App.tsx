@@ -48,8 +48,14 @@ function AuthRoutes() {
   }
 
   // Determine if user is an individual or organization user based on metadata and profile
-  const isIndividualUser = user?.user_metadata?.user_type === 'individual' || (user && !profile?.org_id);
-  const isOrgUser = user?.user_metadata?.user_type === 'organization' || (user && profile?.org_id);
+  const isSuperAdmin = profile?.is_super_admin === true;
+  const isOrgUser =
+    user?.user_metadata?.user_type === 'organization' ||
+    Boolean(profile?.org_id) ||
+    isSuperAdmin;
+  const isIndividualUser =
+    !isOrgUser &&
+    (user?.user_metadata?.user_type === 'individual' || Boolean(user && !profile?.org_id));
 
   return (
     <Routes>

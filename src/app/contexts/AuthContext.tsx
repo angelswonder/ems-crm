@@ -61,7 +61,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
-        .select('*, organizations(*)')
+        .select('*')
         .eq('id', supabaseUser.id)
         .single();
 
@@ -81,16 +81,44 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           });
           setTenant(null);
         }
-      } else if (profileData) {
-        setProfile({
-          ...profileData,
-          email: supabaseUser.email || '',
-          is_super_admin: profileData.is_super_admin || false,
-        });
-        setTenant(profileData.org_id ? profileData.organizations : null);
+        return;
+      }
+
+      if (!profileData) {
+        console.warn('No profile row found for user:', supabaseUser.id);
+        setProfile(null);
+        setTenant(null);
+        return;
+      }
+
+      const profile = {
+        ...profileData,
+        email: supabaseUser.email || '',
+        is_super_admin: profileData.is_super_admin || false,
+      } as UserProfile;
+
+      setProfile(profile);
+
+      if (profile.org_id) {
+        const { data: orgData, error: orgError } = await supabase
+          .from('organizations')
+          .select('*')
+          .eq('id', profile.org_id)
+          .single();
+
+        if (orgError) {
+          console.warn('Error fetching organization:', orgError);
+          setTenant(null);
+        } else {
+          setTenant(orgData as Tenant);
+        }
+      } else {
+        setTenant(null);
       }
     } catch (error) {
       console.error('Profile load error:', error);
+      setProfile(null);
+      setTenant(null);
     }
   };
 
@@ -365,6 +393,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           full_name: ownerFullName || user?.user_metadata?.full_name || '',
           role: 'owner',
           email: ownerEmail || user?.email || '',
+          is_super_admin: user?.user_metadata?.user_type === 'organization' ? false : false,
         }], { onConflict: 'id' })
         .select()
         .single();
@@ -376,7 +405,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       console.log('Profile updated successfully');
 
-      // Update local state
+      const updatedProfile = {
+        ...profileData,
+        email: ownerEmail || user?.email || '',
+        is_super_admin: profileData?.is_super_admin || false,
+      } as UserProfile;
+
+      setProfile(updatedProfile);
       setTenant(org as Tenant);
 
       return org as Tenant;

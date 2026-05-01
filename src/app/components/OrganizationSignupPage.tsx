@@ -73,15 +73,16 @@ export const OrganizationSignupPage: React.FC = () => {
 
       console.log('Organization created successfully');
       setInfoMessage(
-        'A verification email has been sent to your admin address. Please verify your email to complete the setup and access your new organization dashboard.'
+        'Your organization has been created. A verification email has been sent to the admin address. Please verify the email before signing in.'
       );
       setStep('complete');
       toast.success('Organization created successfully!');
 
-      const redirectPath = signUpResult.session ? '/app' : '/auth/organization-login';
-      setTimeout(() => {
-        navigate(redirectPath);
-      }, 2000);
+      if (signUpResult.session) {
+        setTimeout(() => {
+          navigate('/app');
+        }, 2000);
+      }
     } catch (error: any) {
       console.error('Organization creation error:', error);
       const errorMessage = error.message || error.details?.message || 'Failed to create organization';
@@ -237,10 +238,10 @@ export const OrganizationSignupPage: React.FC = () => {
       </div>
       <p className="text-sm text-slate-400">Redirecting to your dashboard...</p>
       <Button
-        onClick={() => navigate('/app')}
+        onClick={() => navigate('/auth/organization-login')}
         className="mt-4 w-full bg-blue-600 hover:bg-blue-700 text-white"
       >
-        Go to Dashboard
+        Go to Organization Login
       </Button>
     </div>
   );
