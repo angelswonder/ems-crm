@@ -71,47 +71,51 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
   const sessionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  const loadUserProfile = async (supabaseUser: User) => {
+    try {
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('*, organizations(*)')
+        .eq('id', supabaseUser.id)
+        .single();
+
+      if (profileError) {
+        console.warn('Error fetching profile:', profileError);
+        if (supabaseUser.user_metadata?.user_type === 'individual') {
+          setProfile({
+            id: supabaseUser.id,
+            org_id: null,
+            full_name: supabaseUser.user_metadata?.full_name || 'User',
+            avatar_url: supabaseUser.user_metadata?.avatar_url,
+            role: 'manager',
+            email: supabaseUser.email || '',
+            theme_preference: 'dark',
+            email_notifications: true,
+          });
+          setTenant(null);
+        }
+      } else if (profileData) {
+        setProfile({
+          ...profileData,
+          email: supabaseUser.email || '',
+        });
+        setTenant(profileData.org_id ? profileData.organizations : null);
+      }
+    } catch (error) {
+      console.error('Profile load error:', error);
+    }
+  };
+
   // Initialize auth state from Supabase
   useEffect(() => {
     const initializeAuth = async () => {
       try {
-        // Get current session
         const { data: { session } } = await supabase.auth.getSession();
         setSession(session);
         setUser(session?.user || null);
 
         if (session?.user) {
-          // Fetch user profile and tenant (tenant is null for individual users)
-          const { data: profileData, error: profileError } = await supabase
-            .from('profiles')
-            .select('*, organizations(*)')
-            .eq('id', session.user.id)
-            .single();
-
-          if (profileError) {
-            console.error('Error fetching profile:', profileError);
-            // For individual users, create a temporary profile if fetch fails
-            if (session.user.user_metadata?.user_type === 'individual') {
-              setProfile({
-                id: session.user.id,
-                org_id: null,
-                full_name: session.user.user_metadata?.full_name || 'User',
-                avatar_url: session.user.user_metadata?.avatar_url,
-                role: 'manager',
-                email: session.user.email || '',
-                theme_preference: 'dark',
-                email_notifications: true,
-              });
-              setTenant(null);
-            }
-          } else if (profileData) {
-            setProfile({
-              ...profileData,
-              email: session.user.email || '',
-            });
-            // Only set tenant if org_id is not null
-            setTenant(profileData.org_id ? profileData.organizations : null);
-          }
+          await loadUserProfile(session.user);
         }
       } catch (error) {
         console.error('Auth initialization error:', error);
@@ -122,17 +126,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     initializeAuth();
 
-    // Simple auth state change listener - only handle sign out events
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, newSession) => {
+      setSession(newSession);
+      setUser(newSession?.user || null);
+
       if (event === 'SIGNED_OUT') {
-        setSession(null);
-        setUser(null);
         setProfile(null);
         setTenant(null);
       }
-      // Don't refetch profile on every auth change - only on explicit sign out
+
+      if ((event === 'SIGNED_IN' || event === 'USER_UPDATED' || event === 'TOKEN_REFRESHED') && newSession?.user) {
+        await loadUserProfile(newSession.user);
+      }
     });
 
     return () => subscription?.unsubscribe();
@@ -218,12 +225,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signInWithPassword = useCallback(async (email: string, password: string) => {
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (error) throw error;
+      if (data?.session?.user) {
+        setSession(data.session);
+        setUser(data.session.user);
+        await loadUserProfile(data.session.user);
+      }
     } catch (error) {
       console.error('Sign in error:', error);
       throw error;
