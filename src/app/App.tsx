@@ -8,10 +8,7 @@ import { OrganizationSignupPage } from "./components/OrganizationSignupPage";
 import { IndividualDashboard } from "./components/IndividualDashboard";
 import { AuthCallback } from "./components/AuthCallback";
 import { Layout } from "./components/Layout";
-import { SettingsProfile } from "./components/SettingsProfile";
-import { PrivacyPolicyPage } from "./components/PrivacyPolicyPage";
-import { TermsOfServicePage } from "./components/TermsOfServicePage";
-import { ContactPage } from "./components/ContactPage";
+import { DebugPage } from "./components/DebugPage";
 
 // Authenticated app component - only loaded when needed
 function AuthApp() {
@@ -92,6 +89,7 @@ export default function App() {
         <Route path="/privacy" element={<PrivacyPolicyPage />} />
         <Route path="/terms" element={<TermsOfServicePage />} />
         <Route path="/contact" element={<ContactPage />} />
+        <Route path="/debug" element={<DebugPage />} />
 
         {/* All other routes use auth context */}
         <Route path="/*" element={<AuthApp />} />

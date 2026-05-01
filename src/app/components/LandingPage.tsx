@@ -123,6 +123,15 @@ export const LandingPage: React.FC = () => {
 
               <div className="mt-4 pt-4 border-t border-slate-700/50">
                 <p className="text-xs text-slate-500 text-center">
+                  Already have an account?{' '}
+                  <button
+                    onClick={() => navigate('/auth/individual-login')}
+                    className="text-blue-400 hover:text-blue-300 underline"
+                  >
+                    Sign in here
+                  </button>
+                </p>
+                <p className="text-xs text-slate-500 text-center mt-1">
                   No credit card required • Instant access
                 </p>
               </div>
@@ -201,8 +210,15 @@ export const LandingPage: React.FC = () => {
               </Button>
 
               <div className="mt-4 pt-4 border-t border-slate-700/50">
-                <p className="text-xs text-slate-500 text-center">
-                  Free 14-day trial • No credit card required
+                <p className="text-xs text-slate-500 text-center">                  Already have an organization?{' '}
+                  <button
+                    onClick={() => navigate('/auth/organization-login')}
+                    className="text-purple-400 hover:text-purple-300 underline"
+                  >
+                    Sign in here
+                  </button>
+                </p>
+                <p className="text-xs text-slate-500 text-center mt-1">                  Free 14-day trial • No credit card required
                 </p>
               </div>
             </Card>
