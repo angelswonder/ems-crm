@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { getSupabaseClient, isSupabaseConfigured } from '../../lib/supabaseClient';
 import {
   Globe,
   Users,

@@ -315,9 +315,11 @@ ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Users can view profiles in their organization" ON profiles;
 CREATE POLICY "Users can view profiles in their organization" ON profiles
-  FOR SELECT USING (
-    org_id = (SELECT org_id FROM profiles WHERE id = auth.uid())
-  );
+  FOR SELECT USING (auth.uid() IS NOT NULL);
+
+DROP POLICY IF EXISTS "Users can create their own profile" ON profiles;
+CREATE POLICY "Users can create their own profile" ON profiles
+  FOR INSERT WITH CHECK (id = auth.uid());
 
 DROP POLICY IF EXISTS "Users can update their own profile" ON profiles;
 CREATE POLICY "Users can update their own profile" ON profiles

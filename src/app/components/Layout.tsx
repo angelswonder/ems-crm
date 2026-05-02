@@ -14,7 +14,7 @@ import { SuperAdminDashboard } from "./admin/SuperAdminDashboard";
 import { Toaster } from "sonner";
 
 export function Layout() {
-  const { profile, tenant, loading } = useAuth();
+  const { profile, tenant, loading, signOut } = useAuth();
   const [currentPage, setCurrentPage] = useState("dashboard");
   const [loadingTimeout, setLoadingTimeout] = useState(false);
 

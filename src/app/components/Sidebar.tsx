@@ -55,7 +55,7 @@ const ROLE_GRADIENT: Record<string, string> = {
 
 export function Sidebar({ currentPage, onPageChange }: SidebarProps) {
   const { profile, signOut } = useAuth();
-  const { currentUser, notifications } = useApp();
+  const { notifications } = useApp();
   const unreadCount = notifications.filter((n) => !n.read).length;
   const [isExpanded, setIsExpanded] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -76,9 +76,14 @@ export function Sidebar({ currentPage, onPageChange }: SidebarProps) {
     hoverTimeout.current = setTimeout(() => setIsExpanded(false), 200);
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     setIsExpanded(false);
-    signOut();
+    try {
+      await signOut();
+      // Navigation happens via auth state change listener in App.tsx
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
   };
 
   const validateForm = () => {
@@ -207,11 +212,11 @@ export function Sidebar({ currentPage, onPageChange }: SidebarProps) {
           </div>
 
           {/* Role badge (expanded) */}
-          {isExpanded && currentUser && (
+          {isExpanded && profile && (
             <div className="px-4 mb-3 flex-shrink-0">
               <div className="bg-sidebar-accent/60 rounded-xl px-3 py-2 flex items-center gap-2">
                 <div className={`w-2 h-2 rounded-full bg-sidebar-primary animate-pulse`} />
-                <span className="text-sidebar-foreground/80 text-xs whitespace-nowrap truncate">{ROLE_LABELS[currentUser.role]}</span>
+                <span className="text-sidebar-foreground/80 text-xs whitespace-nowrap truncate capitalize">{profile.role}</span>
               </div>
             </div>
           )}
@@ -294,7 +299,7 @@ export function Sidebar({ currentPage, onPageChange }: SidebarProps) {
           <div className="px-4 pb-4 space-y-2 flex-shrink-0">
             <div className="h-px bg-sidebar-border/30 mx-2" />
 
-            {profile && (
+            {profile && profile.role === 'owner' && (
               <div className="relative group">
                 <button
                   onClick={() => setShowAddModal(true)}
@@ -352,30 +357,26 @@ export function Sidebar({ currentPage, onPageChange }: SidebarProps) {
             </div>
 
             {/* User profile */}
-            {currentUser && (
+            {profile && (
               <div className="relative group">
-                <div
-                  className={cn(
-                    "transition-all duration-300 flex items-center cursor-pointer hover:scale-105",
-                    isExpanded ? "gap-3 px-2 py-2" : "justify-center py-1"
-                  )}
-                  onClick={() => currentUser.permissions.includes("settings") && onPageChange("settings")}
+                <button
+                  onClick={() => onPageChange("settings")}
+                  className="w-full px-4 py-3 flex items-center gap-3 rounded-xl bg-gradient-to-br from-sidebar-accent to-sidebar-accent/80 hover:from-sidebar-primary/80 hover:to-sidebar-primary/60 transition-all"
                 >
-                  <div className={`w-10 h-10 rounded-full bg-gradient-to-br ${gradientClass} flex items-center justify-center shadow-lg flex-shrink-0`}>
-                    <span className="text-white font-semibold text-sm">{currentUser.initials}</span>
+                  <div className="w-10 h-10 bg-gradient-to-br from-sidebar-primary to-sidebar-primary/80 rounded-lg flex items-center justify-center flex-shrink-0 shadow">
+                    <span className="text-white font-semibold text-sm">{profile.full_name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)}</span>
                   </div>
                   {isExpanded && (
-                    <div className="overflow-hidden">
-                      <div className="text-sidebar-foreground font-medium text-sm whitespace-nowrap truncate">{currentUser.name}</div>
-                      <div className="text-sidebar-foreground/60 text-xs whitespace-nowrap truncate">{currentUser.companyEmail}</div>
+                    <div className="min-w-0 flex-1">
+                      <div className="text-sidebar-foreground font-medium text-sm whitespace-nowrap truncate">{profile.full_name}</div>
+                      <div className="text-sidebar-foreground/60 text-xs whitespace-nowrap truncate">{profile.email}</div>
                     </div>
                   )}
-                </div>
+                </button>
                 {!isExpanded && (
-                  <div className="absolute left-full ml-4 px-3 py-2 bg-gradient-to-br from-sidebar-primary to-sidebar-primary/90 text-sidebar-primary-foreground rounded-xl opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none whitespace-nowrap z-50 shadow-lg transform translate-x-2 group-hover:translate-x-0">
-                    <div className="font-medium text-sm">{currentUser.name}</div>
-                    <div className="text-xs opacity-75 mt-0.5">{ROLE_LABELS[currentUser.role]}</div>
-                    <div className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1 w-2 h-2 bg-sidebar-primary rotate-45" />
+                  <div className="absolute bottom-full left-0 mb-2 w-max bg-gradient-to-br from-sidebar-primary to-sidebar-primary/90 text-sidebar-primary-foreground rounded-xl opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none whitespace-nowrap z-50 shadow-lg px-3 py-2">
+                    <div className="font-medium text-sm">{profile.full_name}</div>
+                    <div className="text-xs opacity-75 mt-0.5 capitalize">{profile.role}</div>
                   </div>
                 )}
               </div>

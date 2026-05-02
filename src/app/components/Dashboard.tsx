@@ -5,9 +5,12 @@ import { DemandChart } from "./DemandChart";
 import { EnergyParameters } from "./EnergyParameters";
 import { EnhancedFilterSection } from "./EnhancedFilterSection";
 import { useApp } from "../contexts/AppContext";
+import { useAuth } from "../contexts/AuthContext";
 
 export function Dashboard() {
-  const { currentUser, locations } = useApp();
+  const { locations } = useApp();
+  const { profile } = useAuth();
+  const currentUser = profile ? { name: profile.full_name, initials: profile.full_name.split(' ').map(n => n[0]).join('').toUpperCase() } : null;
 
   const [selectedFilterType, setSelectedFilterType] = useState<"device" | "virtual-group">("device");
   const [selectedDevice, setSelectedDevice] = useState("device-1");

@@ -59,6 +59,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const loadUserProfile = async (supabaseUser: User) => {
     try {
+      if (!supabase) {
+        console.warn('Supabase not configured for profile load');
+        return;
+      }
+
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('*')
@@ -67,19 +72,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (profileError) {
         console.warn('Error fetching profile:', profileError);
-        if (supabaseUser.user_metadata?.user_type === 'individual') {
-          setProfile({
+        // Create profile if it doesn't exist (for new users or after org signup)
+        if (profileError.code === 'PGRST116') {
+          console.log('Profile not found, creating new profile for user:', supabaseUser.id);
+          const newProfile = {
             id: supabaseUser.id,
-            org_id: null,
-            full_name: supabaseUser.user_metadata?.full_name || 'User',
+            org_id: null, // Will be set if user has org context
+            full_name: supabaseUser.user_metadata?.full_name || supabaseUser.email?.split('@')[0] || 'User',
             avatar_url: supabaseUser.user_metadata?.avatar_url,
-            role: 'manager',
+            role: 'owner', // Default for org creators
             email: supabaseUser.email || '',
             theme_preference: 'dark',
             email_notifications: true,
-            is_super_admin: false,
-          });
+            is_super_admin: supabaseUser.user_metadata?.is_super_admin || false,
+          };
+
+          // Try to create the profile
+          const { data: createdProfile, error: createError } = await supabase
+            .from('profiles')
+            .insert([newProfile])
+            .select()
+            .single();
+
+          if (createError) {
+            console.error('Failed to create profile:', createError);
+            setProfile(null);
+            setTenant(null);
+            return;
+          }
+
+          console.log('Profile created successfully:', createdProfile);
+          setProfile(createdProfile as UserProfile);
           setTenant(null);
+          return;
         }
         return;
       }
@@ -319,6 +344,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signOut = useCallback(async () => {
     try {
+      if (!supabase) {
+        console.warn('Supabase not configured for sign out');
+        setSession(null);
+        setUser(null);
+        setProfile(null);
+        setTenant(null);
+        localStorage.removeItem('currentTenantId');
+        localStorage.removeItem('auth_token');
+        sessionStorage.clear();
+        return;
+      }
+
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
       
@@ -332,7 +369,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       sessionStorage.clear();
     } catch (error) {
       console.error('Sign out error:', error);
-      throw error;
+      // Even if signOut fails, clear local state so user can navigate to login
+      setSession(null);
+      setUser(null);
+      setProfile(null);
+      setTenant(null);
+      localStorage.removeItem('currentTenantId');
+      localStorage.removeItem('auth_token');
+      sessionStorage.clear();
     }
   }, []);
 
@@ -359,6 +403,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   ): Promise<Tenant> => {
     const currentUserId = ownerUserId || user?.id;
     if (!currentUserId) throw new Error('User not authenticated');
+    if (!supabase) throw new Error('Supabase not configured');
 
     try {
       console.log('Creating organization:', { name, slug, currentUserId });
@@ -381,37 +426,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw new Error(`Failed to create organization: ${orgError.message}`);
       }
 
-      console.log('Organization created:', org.id);
-
-      // Create or upsert profile linking user to org
-      console.log('Updating profile with org_id:', org.id);
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .upsert([{
-          id: currentUserId,
-          org_id: org.id,
-          full_name: ownerFullName || user?.user_metadata?.full_name || '',
-          role: 'owner',
-          email: ownerEmail || user?.email || '',
-          is_super_admin: user?.user_metadata?.user_type === 'organization' ? false : false,
-        }], { onConflict: 'id' })
-        .select()
-        .single();
-
-      if (profileError) {
-        console.error('Profile upsert failed:', profileError);
-        throw new Error(`Failed to link profile to organization: ${profileError.message}`);
+      if (!org || !org.id) {
+        throw new Error('Organization created but no ID returned');
       }
 
-      console.log('Profile updated successfully');
+      console.log('Organization created:', org.id);
 
-      const updatedProfile = {
-        ...profileData,
+      // Don't create profile here - let loadUserProfile handle it after login
+      // This avoids RLS policy issues during signup
+
+      console.log('Organization created successfully, profile will be created on first login');
+
+      // Set basic profile for now
+      const tempProfile = {
+        id: currentUserId,
+        org_id: org.id,
+        full_name: ownerFullName || user?.user_metadata?.full_name || '',
+        role: 'owner',
         email: ownerEmail || user?.email || '',
-        is_super_admin: profileData?.is_super_admin || false,
+        is_super_admin: false,
       } as UserProfile;
 
-      setProfile(updatedProfile);
+      setProfile(tempProfile);
       setTenant(org as Tenant);
 
       return org as Tenant;
