@@ -40,7 +40,7 @@ function AuthRoutes() {
             onClick={() => window.location.href = '/'}
             className="text-xs text-slate-400 hover:text-slate-200 underline mt-4"
           >
-            Reset to Landing Page (dev)
+            Reset to Homepage
           </button>
         </div>
       </div>
@@ -49,14 +49,16 @@ function AuthRoutes() {
 
   // Determine if user is an individual or organization user based on metadata and profile
   const isSuperAdmin = profile?.is_super_admin === true;
+  const hasOrgMetadata = user?.user_metadata?.user_type === 'organization';
+  const hasOrgProfile = Boolean(profile?.org_id);
   const isOrgUser =
     isSuperAdmin ||
-    user?.user_metadata?.user_type === 'organization' ||
-    Boolean(profile?.org_id);
+    hasOrgMetadata ||
+    hasOrgProfile;
   const isIndividualUser =
     !isSuperAdmin &&
     !isOrgUser &&
-    (user?.user_metadata?.user_type === 'individual' || Boolean(user && !profile?.org_id));
+    (user?.user_metadata?.user_type === 'individual' || Boolean(user && !hasOrgProfile));
 
   return (
     <Routes>

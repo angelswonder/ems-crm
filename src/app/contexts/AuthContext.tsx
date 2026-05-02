@@ -75,12 +75,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Create profile if it doesn't exist (for new users or after org signup)
         if (profileError.code === 'PGRST116') {
           console.log('Profile not found, creating new profile for user:', supabaseUser.id);
+          
+          // Check if user should be associated with an organization
+          let orgId = null;
+          if (supabaseUser.user_metadata?.user_type === 'organization') {
+            // Try to find an organization owned by this user (based on email)
+            const { data: orgs, error: orgError } = await supabase
+              .from('organizations')
+              .select('id')
+              .eq('billing_email', supabaseUser.email)
+              .limit(1);
+            
+            if (!orgError && orgs && orgs.length > 0) {
+              orgId = orgs[0].id;
+              console.log('Found existing organization for user:', orgId);
+            }
+          }
+          
           const newProfile = {
             id: supabaseUser.id,
-            org_id: null, // Will be set if user has org context
+            org_id: orgId,
             full_name: supabaseUser.user_metadata?.full_name || supabaseUser.email?.split('@')[0] || 'User',
             avatar_url: supabaseUser.user_metadata?.avatar_url,
-            role: 'owner', // Default for org creators
+            role: orgId ? 'owner' : 'member', // Default to owner if they have an org
             email: supabaseUser.email || '',
             theme_preference: 'dark',
             email_notifications: true,
@@ -103,7 +120,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
           console.log('Profile created successfully:', createdProfile);
           setProfile(createdProfile as UserProfile);
-          setTenant(null);
+          
+          // Set tenant if org_id exists
+          if (createdProfile.org_id) {
+            const { data: orgData, error: orgError } = await supabase
+              .from('organizations')
+              .select('*')
+              .eq('id', createdProfile.org_id)
+              .single();
+
+            if (!orgError && orgData) {
+              setTenant(orgData as Tenant);
+            } else {
+              setTenant(null);
+            }
+          } else {
+            setTenant(null);
+          }
           return;
         }
         return;
@@ -119,7 +152,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const profile = {
         ...profileData,
         email: supabaseUser.email || '',
-        is_super_admin: profileData.is_super_admin || false,
+        is_super_admin: supabaseUser.user_metadata?.is_super_admin || profileData.is_super_admin || false,
       } as UserProfile;
 
       setProfile(profile);

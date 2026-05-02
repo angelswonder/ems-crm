@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { useApp, ROLE_LABELS } from "../contexts/AppContext";
+import { useAuth } from "../contexts/AuthContext";
+import { ROLE_LABELS } from "../contexts/AppContext";
 import { Card, CardContent, CardHeader } from "./ui/card";
 import { Switch } from "./ui/switch";
 import { Badge } from "./ui/badge";
@@ -53,11 +54,11 @@ const ROLE_GRADIENT: Record<string, string> = {
 };
 
 export function SettingsProfile() {
-  const { currentUser, theme, setTheme, layoutMode, setLayoutMode, updateUser, addNotification, locations, addLocation, removeLocation } = useApp();
+  const { profile, updateProfile } = useAuth();
 
   // Profile edit state
   const [editingProfile, setEditingProfile] = useState(false);
-  const [editName, setEditName] = useState(currentUser?.name ?? "");
+  const [editName, setEditName] = useState(profile?.full_name ?? "");
   const [profileSaved, setProfileSaved] = useState(false);
 
   // Add location form state
@@ -106,14 +107,8 @@ export function SettingsProfile() {
   const handleSaveProfile = () => {
     const trimmed = editName.trim();
     if (!trimmed) return;
-    const oldName = currentUser.name;
-    updateUser(currentUser.id, { name: trimmed });
-    addNotification({
-      type: "profile-change",
-      subject: `Profile Updated — ${trimmed}`,
-      body: `A user has updated their profile.\n\nUser ID: ${currentUser.id}\nRole: ${ROLE_LABELS[currentUser.role]}\nPrevious Name: ${oldName}\nNew Name: ${trimmed}\nTimestamp: ${new Date().toLocaleString()}`,
-      fromUser: currentUser.id,
-    });
+    const oldName = profile?.full_name || "";
+    await updateProfile({ full_name: trimmed });
     setEditingProfile(false);
     setProfileSaved(true);
     setTimeout(() => setProfileSaved(false), 3000);
@@ -832,12 +827,12 @@ export function SettingsProfile() {
                           {profileSaved && <Check className="w-4 h-4 text-green-500" />}
                         </div>
                         <div className="text-sm text-muted-foreground mt-0.5">{currentUser.companyEmail}</div>
-                        <Badge className={`mt-2 text-xs ${currentUser.role === "admin" ? "bg-emerald-50 text-emerald-700 border-emerald-200" : currentUser.role === "manager" ? "bg-blue-50 text-blue-700 border-blue-200" : currentUser.role === "team-leader" ? "bg-violet-50 text-violet-700 border-violet-200" : "bg-amber-50 text-amber-700 border-amber-200"}`}>
-                          {ROLE_LABELS[currentUser.role]}
+                        <Badge className={`mt-2 text-xs ${profile?.role === "admin" ? "bg-emerald-50 text-emerald-700 border-emerald-200" : profile?.role === "manager" ? "bg-blue-50 text-blue-700 border-blue-200" : profile?.role === "team-leader" ? "bg-violet-50 text-violet-700 border-violet-200" : "bg-amber-50 text-amber-700 border-amber-200"}`}>
+                          {profile?.role ? ROLE_LABELS[profile.role] : 'User'}
                         </Badge>
                       </div>
                       <button
-                        onClick={() => { setEditName(currentUser.name); setEditingProfile(true); }}
+                        onClick={() => { setEditName(profile?.full_name || ""); setEditingProfile(true); }}
                         className="w-8 h-8 rounded-xl bg-primary/10 hover:bg-primary/20 flex items-center justify-center transition-colors flex-shrink-0 mt-0.5"
                       >
                         <Edit2 className="w-3.5 h-3.5 text-primary" />
@@ -850,7 +845,7 @@ export function SettingsProfile() {
                 <div className="mt-4 space-y-2 pt-4 border-t border-border/20">
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
                     <Mail className="w-3.5 h-3.5 flex-shrink-0" />
-                    <span className="truncate">{currentUser.username}</span>
+                    <span className="truncate">{profile?.email}</span>
                   </div>
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
                     <Shield className="w-3.5 h-3.5 flex-shrink-0" />
