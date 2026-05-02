@@ -104,7 +104,7 @@ export function SettingsProfile() {
 
   if (!currentUser) return null;
 
-  const handleSaveProfile = () => {
+  const handleSaveProfile = async () => {
     const trimmed = editName.trim();
     if (!trimmed) return;
     const oldName = profile?.full_name || "";
