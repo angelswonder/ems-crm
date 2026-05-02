@@ -5,7 +5,7 @@ const https = require('https');
 
 // Configuration
 const SUPABASE_URL = 'https://lodvqqhkrccqhsogfhim.supabase.co';
-const SERVICE_ROLE_KEY = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxvZHZxcWhrcmNjcWhzb2dmaGltIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NjQ1NTgxNCwiZXhwIjoyMDkyMDMxODE0fQ.yPR6KXbeA0vpjMGsXhymXy-nMX1WSIh17HjCgZOLwOo;
+const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY; // Must be set as env variable for security reasons
 
 // Test data
 const TEST_ORG_ID = 'f47ac10b-58cc-4372-a567-0e02b2c3d479';
