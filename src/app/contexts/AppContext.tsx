@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, useMemo, useEffect } from "react";
 import { useAuth } from "./AuthContext";
+import { getSupabaseClient, isSupabaseConfigured } from "../../lib/supabaseClient";
+import { toast } from "sonner";
 
 /* ─── Types ────────────────────────────────────────────────────────── */
 export type SectionId =
@@ -273,6 +275,33 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const addUser = useCallback((data: Omit<User, "id" | "initials">): User => {
     const newUser: User = { ...data, id: `user-${Date.now()}`, initials: mkInitials(data.name) };
     setUsers((prev) => [...prev, newUser]);
+    
+    // Try to create user in Supabase if configured
+    if (isSupabaseConfigured && profile?.org_id) {
+      const supabase = getSupabaseClient();
+      const createSupabaseUser = async () => {
+        try {
+          const { data: response, error } = await supabase.functions.invoke('create-org-user', {
+            body: {
+              email: data.username,
+              password: data.password,
+              full_name: data.name,
+              role: data.role === 'team-leader' ? 'team_leader' : data.role,
+              org_id: profile.org_id,
+            },
+          });
+
+          if (error) throw error;
+          
+          toast.success(`User ${data.name} created and saved to database!`);
+        } catch (err: any) {
+          console.error('Error creating Supabase user:', err);
+          toast.error(`User created locally but not saved to database: ${err.message}`);
+        }
+      };
+      createSupabaseUser();
+    }
+    
     setNotifications((prev) => [{
       id: `notif-${Date.now()}`,
       type: "user-created",
@@ -283,7 +312,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       fromUser: "system",
     }, ...prev]);
     return newUser;
-  }, []);
+  }, [profile?.org_id]);
 
   const removeUser = useCallback((userId: string) => {
     if (userId === "admin") return;

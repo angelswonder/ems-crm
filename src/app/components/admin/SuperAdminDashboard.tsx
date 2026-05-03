@@ -97,7 +97,9 @@ export const SuperAdminDashboard: React.FC = () => {
   const fetchSystemData = async () => {
     setLoading(true);
     try {
-      // Fetch all organizations (requires special permission)
+      if (!supabase) throw new Error('Supabase not configured');
+
+      // Fetch all organizations with their subscription info
       const { data: orgsData, error: orgsError } = await supabase
         .from('organizations')
         .select(`
@@ -107,11 +109,14 @@ export const SuperAdminDashboard: React.FC = () => {
           subscription_status,
           created_at,
           billing_email,
-          profiles(count)
+          profiles(id)
         `)
         .order('created_at', { ascending: false });
 
-      if (orgsError) throw orgsError;
+      if (orgsError) {
+        console.error('Error fetching organizations:', orgsError);
+        throw orgsError;
+      }
 
       // Calculate statistics
       const orgs = (orgsData || []) as any[];
@@ -120,7 +125,7 @@ export const SuperAdminDashboard: React.FC = () => {
         activeSubscriptions: orgs.filter(o => o.subscription_status === 'active').length,
         trialing: orgs.filter(o => o.subscription_status === 'trialing').length,
         inactive: orgs.filter(o => o.subscription_status === 'inactive').length,
-        estimatedMonthlyRevenue: orgs.filter(o => o.subscription_status === 'active').length * 25, // Assume $25/month
+        estimatedMonthlyRevenue: orgs.filter(o => o.subscription_status === 'active').length * 25,
         planDistribution: {
           free: orgs.filter(o => o.plan_type === 'free').length,
           pro: orgs.filter(o => o.plan_type === 'pro').length,
@@ -136,12 +141,13 @@ export const SuperAdminDashboard: React.FC = () => {
           plan_type: o.plan_type,
           subscription_status: o.subscription_status,
           created_at: o.created_at,
-          team_count: o.profiles?.[0]?.count || 0,
+          team_count: Array.isArray(o.profiles) ? o.profiles.length : 0,
           billing_email: o.billing_email,
         }))
       );
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching system data:', error);
+      toast.error(`Failed to load system data: ${error.message}`);
     } finally {
       setLoading(false);
     }
