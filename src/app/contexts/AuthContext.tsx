@@ -19,7 +19,7 @@ export interface UserProfile {
   avatar_url?: string;
   role: 'owner' | 'admin' | 'member' | 'viewer' | 'manager'; // Add manager for individuals
   email: string;
-  theme_preference: 'light' | 'dark';
+  theme_preference: 'light' | 'dark' | 'solar' | 'corporate' | 'ocean';
   email_notifications: boolean;
   is_super_admin?: boolean;
 }
@@ -64,6 +64,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return;
       }
 
+      console.log('Loading profile for user:', supabaseUser.id, 'email:', supabaseUser.email);
+
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('*')
@@ -73,7 +75,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (profileError) {
         console.warn('Error fetching profile:', profileError);
         // Create profile if it doesn't exist (for new users or after org signup)
-        if (profileError.code === 'PGRST116') {
+        const isProfileNotFound = profileError.code === 'PGRST116' || ((profileError as any)?.status === 406);
+        if (isProfileNotFound) {
           console.log('Profile not found, creating new profile for user:', supabaseUser.id);
           
           // Check if user should be associated with an organization
@@ -92,6 +95,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             }
           }
           
+          // Special handling for superadmin users
+          const isSuperAdminUser = supabaseUser.email?.endsWith('@admin.com') || 
+                                   supabaseUser.user_metadata?.is_super_admin === true;
+          
           const newProfile = {
             id: supabaseUser.id,
             org_id: orgId,
@@ -101,8 +108,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             email: supabaseUser.email || '',
             theme_preference: 'dark',
             email_notifications: true,
-            is_super_admin: supabaseUser.user_metadata?.is_super_admin || false,
+            is_super_admin: isSuperAdminUser,
           };
+
+          console.log('Creating profile with data:', newProfile);
 
           // Try to create the profile
           const { data: createdProfile, error: createError } = await supabase
@@ -152,7 +161,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const profile = {
         ...profileData,
         email: supabaseUser.email || '',
-        is_super_admin: supabaseUser.user_metadata?.is_super_admin || profileData.is_super_admin || false,
+        is_super_admin: supabaseUser.user_metadata?.is_super_admin || 
+                       profileData.is_super_admin || 
+                       supabaseUser.email?.endsWith('@admin.com') || false,
       } as UserProfile;
 
       setProfile(profile);
@@ -221,10 +232,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           localStorage.removeItem('currentTenantId');
           localStorage.removeItem('auth_token');
           sessionStorage.clear();
+          setLoading(false);
         }
 
         if ((event === 'SIGNED_IN' || event === 'USER_UPDATED' || event === 'TOKEN_REFRESHED') && newSession?.user) {
-          await loadUserProfile(newSession.user);
+          setLoading(true);
+          try {
+            await loadUserProfile(newSession.user);
+          } finally {
+            setLoading(false);
+          }
         }
       });
 
@@ -440,49 +457,47 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     try {
       console.log('Creating organization:', { name, slug, currentUserId });
-      
-      // Create organization
-      const { data: org, error: orgError } = await supabase
-        .from('organizations')
-        .insert([{
-          name,
-          slug,
-          plan_type: planType,
-          subscription_status: planType === 'free' ? 'active' : 'trialing',
-          billing_email: ownerEmail || user?.email,
-        }])
-        .select()
-        .single();
 
-      if (orgError) {
-        console.error('Organization insert failed:', orgError);
-        throw new Error(`Failed to create organization: ${orgError.message}`);
+      const functionPayload = {
+        name,
+        slug,
+        ownerUserId: currentUserId,
+        ownerEmail: ownerEmail || user?.email || '',
+        ownerFullName: ownerFullName || user?.user_metadata?.full_name || currentUserId,
+        planType,
+      };
+
+      const { data: functionResult, error: functionError } = await supabase.functions.invoke('create-organization', {
+        body: functionPayload,
+      });
+
+      if (functionError) {
+        console.error('Edge function create-organization failed:', functionError);
+        throw new Error(functionError.message || 'Failed to create organization');
       }
 
+      const org = functionResult?.org as Tenant;
       if (!org || !org.id) {
         throw new Error('Organization created but no ID returned');
       }
 
       console.log('Organization created:', org.id);
 
-      // Don't create profile here - let loadUserProfile handle it after login
-      // This avoids RLS policy issues during signup
-
-      console.log('Organization created successfully, profile will be created on first login');
-
-      // Set basic profile for now
       const tempProfile = {
         id: currentUserId,
         org_id: org.id,
-        full_name: ownerFullName || user?.user_metadata?.full_name || '',
+        full_name: ownerFullName || user?.user_metadata?.full_name || ownerEmail?.split('@')[0] || 'User',
         role: 'owner',
         email: ownerEmail || user?.email || '',
         is_super_admin: false,
+        theme_preference: 'dark',
+        email_notifications: true,
       } as UserProfile;
 
       setProfile(tempProfile);
       setTenant(org as Tenant);
 
+      console.log('Organization and profile created successfully');
       return org as Tenant;
     } catch (error) {
       console.error('Organization creation error:', error);

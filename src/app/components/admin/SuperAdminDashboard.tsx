@@ -83,7 +83,7 @@ export const SuperAdminDashboard: React.FC = () => {
   };
 
   // Only super-admin can access this
-  const isSuperAdmin = profile?.role === 'owner' && profile?.is_super_admin === true;
+  const isSuperAdmin = profile?.is_super_admin === true;
 
   useEffect(() => {
     if (!isSuperAdmin) {

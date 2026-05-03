@@ -8,6 +8,8 @@ import {
   ALL_SECTIONS,
   mkInitials,
 } from "../contexts/AppContext";
+import { useAuth } from "../contexts/AuthContext";
+import { InviteMember } from "./team/InviteMember";
 import { Card, CardContent, CardHeader } from "./ui/card";
 import { Badge } from "./ui/badge";
 import {
@@ -25,6 +27,7 @@ import {
   Shield,
   UserPlus,
   Lock,
+  Mail,
 } from "lucide-react";
 
 const ROLE_OPTIONS: { value: UserRole; label: string; color: string }[] = [
@@ -391,11 +394,14 @@ function AddUserModal({ onClose }: { onClose: () => void }) {
 /* ─── Main Configuration page ─────────────────────────────────────── */
 export function Configuration() {
   const { users, updateUser, removeUser, addNotification } = useApp();
+  const { profile } = useAuth();
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showInvitePanel, setShowInvitePanel] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [expandedUser, setExpandedUser] = useState<string | null>(null);
   const [saved, setSaved] = useState<string | null>(null);
+  const canInvite = profile && ['owner', 'admin'].includes(profile.role);
 
   const handleSave = (userId: string, updates: Partial<User>, oldUser: User) => {
     updateUser(userId, updates, false);
@@ -428,14 +434,24 @@ export function Configuration() {
             </h1>
             <p className="text-muted-foreground mt-0.5">Manage users, roles, and system access permissions</p>
           </div>
-          <button
-            onClick={() => setShowAddModal(true)}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-white text-sm font-medium hover:opacity-90 active:scale-[0.98] transition-all shadow-sm"
-            style={{ background: "linear-gradient(135deg, #2c5f4e, #3a6b5a)" }}
-          >
-            <UserPlus className="w-4 h-4" />
-            Add User
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => setShowAddModal(true)}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-white text-sm font-medium hover:opacity-90 active:scale-[0.98] transition-all shadow-sm"
+              style={{ background: "linear-gradient(135deg, #2c5f4e, #3a6b5a)" }}
+            >
+              <UserPlus className="w-4 h-4" />
+              Add User
+            </button>
+            <button
+              onClick={() => setShowInvitePanel((prev) => !prev)}
+              disabled={!canInvite}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-border/50 text-sm font-medium text-foreground bg-background/80 hover:bg-background transition-all shadow-sm disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <Mail className="w-4 h-4" />
+              {showInvitePanel ? 'Hide Invite' : 'Invite User'}
+            </button>
+          </div>
         </div>
 
         {/* Stats */}
@@ -454,6 +470,12 @@ export function Configuration() {
             </Card>
           ))}
         </div>
+
+        {showInvitePanel && (
+          <div className="mt-6">
+            <InviteMember />
+          </div>
+        )}
 
         {/* User table */}
         <Card className="border-border/30 shadow-sm overflow-hidden">

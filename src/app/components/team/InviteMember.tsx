@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { Mail, Send, Loader2, Copy, Check } from 'lucide-react';
-import { getSupabaseClient, isSupabaseConfigured } from '../../lib/supabaseClient';
+import { getSupabaseClient, isSupabaseConfigured } from '../../../lib/supabaseClient';
 import { toast } from 'sonner';
 import { useAuth } from '../../contexts/AuthContext';
 

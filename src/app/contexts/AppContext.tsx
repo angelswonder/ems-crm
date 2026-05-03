@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useMemo, useEffect } from "react";
+import { useAuth } from "./AuthContext";
 
 /* ─── Types ────────────────────────────────────────────────────────── */
 export type SectionId =
@@ -230,6 +231,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [locations, setLocations] = useState<Location[]>(DEFAULT_LOCATIONS);
   const [theme, setThemeState] = useState<ThemeName>(loadStoredTheme());
   const [layoutMode, setLayoutModeState] = useState<LayoutMode>(loadStoredLayoutMode());
+  const { profile } = useAuth();
 
   const currentUser = useMemo(
     () => users.find((u) => u.id === currentUserId) ?? null,
@@ -332,6 +334,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       // localStorage not available
     }
   }, []);
+  useEffect(() => {
+    if (profile?.theme_preference && profile.theme_preference !== theme) {
+      setThemeState(profile.theme_preference);
+      try {
+        localStorage.setItem("ems-theme", profile.theme_preference);
+      } catch (e) {
+        // localStorage not available
+      }
+    }
+  }, [profile?.theme_preference]);
+
   useEffect(() => {
     const classes = ["dark", "theme-solar", "theme-corporate", "theme-ocean"];
     const root = document.documentElement;

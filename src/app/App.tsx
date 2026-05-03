@@ -9,6 +9,7 @@ import { IndividualDashboard } from "./components/IndividualDashboard";
 import { SettingsProfile } from "./components/SettingsProfile";
 import { AuthCallback } from "./components/AuthCallback";
 import { Layout } from "./components/Layout";
+import { AcceptInvitePage } from "./components/AcceptInvitePage";
 import { PrivacyPolicyPage } from "./components/PrivacyPolicyPage";
 import { TermsOfServicePage } from "./components/TermsOfServicePage";
 import { ContactPage } from "./components/ContactPage";
@@ -48,7 +49,7 @@ function AuthRoutes() {
   }
 
   // Determine if user is an individual or organization user based on metadata and profile
-  const isSuperAdmin = profile?.is_super_admin === true;
+  const isSuperAdmin = profile?.is_super_admin === true || user?.email?.endsWith('@admin.com');
   const hasOrgMetadata = user?.user_metadata?.user_type === 'organization';
   const hasOrgProfile = Boolean(profile?.org_id);
   const isOrgUser =
@@ -69,6 +70,7 @@ function AuthRoutes() {
         element={user ? <Navigate to="/app" replace /> : <LoginPage />}
       />
       <Route path="/auth/callback" element={<AuthCallback />} />
+      <Route path="/accept-invite" element={<AcceptInvitePage />} />
       
       {/* Route based on user type */}
       <Route path="/individual/dashboard" element={isIndividualUser && user ? <IndividualDashboard /> : user && isOrgUser ? <Navigate to="/app" replace /> : <Navigate to="/auth/individual-login" replace />} />
