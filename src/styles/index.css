@@ -1,4 +1,6 @@
-@import 'tailwindcss';
 @import 'tw-animate-css';
 @import './default_theme.css';
 @import './globals.css';
+@tailwind base;
+@tailwind components;
+@tailwind utilities;

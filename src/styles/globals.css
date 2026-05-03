@@ -1,5 +1,14 @@
 @custom-variant dark (&:is(.dark *));
 
+html, body {
+  height: 100%;
+  margin: 0;
+}
+
+#root {
+  height: 100%;
+}
+
 :root {
   --font-size: 14px;
   --background: #f8faf9;

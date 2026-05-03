@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { useApp } from "../contexts/AppContext";
-import { getSupabaseClient, isSupabaseConfigured } from "../lib/supabaseClient";
+import { getSupabaseClient, isSupabaseConfigured } from "../../lib/supabaseClient";
 import { Button } from "./ui/button";
 import { AlertCircle, CheckCircle2, Loader2, Mail, LogIn, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
